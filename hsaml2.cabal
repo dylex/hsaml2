@@ -1,0 +1,37 @@
+name:                hsaml2
+version:             0
+synopsis:            OASIS Security Assertion Markup Language (SAML) V2.0
+description:         
+license:             Apache-2.0
+license-file:        LICENSE
+author:              Dylan Simon
+maintainer:          dylan@dylex.net
+copyright:           2016
+category:            Security, Network, Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  exposed-modules:
+    SAML2.XML
+    SAML2.XML.Schema
+    SAML2.XML.Schema.Datatypes
+    SAML2.XML.Signature
+    SAML2.XML.Encryption
+    SAML2.XML.Types
+    SAML2.Version
+    SAML2.Core
+    SAML2.Core.Namespaces
+    SAML2.Core.Datatypes
+    SAML2.Core.Assertions
+    SAML2.Core.Identifiers
+    SAML2.Profiles
+    SAML2.Profiles.ConfirmationMethod
+  build-depends:       
+    base >=4.8 && <5,
+    bytestring,
+    time,
+    network-uri,
+    hxt
+  default-language:    Haskell2010
+  ghc-options: -Wall
