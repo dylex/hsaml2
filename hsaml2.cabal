@@ -27,11 +27,17 @@ library
     SAML2.Core.Identifiers
     SAML2.Profiles
     SAML2.Profiles.ConfirmationMethod
+  other-modules:
+    SAML2.XML.Pickle
   build-depends:       
     base >=4.8 && <5,
     bytestring,
     time,
     network-uri,
-    hxt
+    hxt,
+    hxt-charproperties,
+    semigroups,
+    invertible,
+    base64-bytestring
   default-language:    Haskell2010
   ghc-options: -Wall

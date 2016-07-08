@@ -1,23 +1,33 @@
+{-# LANGUAGE ViewPatterns #-}
 -- |
 -- Schema Organization and Namespaces
 --
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §1.2
 module SAML2.Core.Namespaces 
-  ( samlURN
-  , SAMLVersion(..)
+  ( SAMLVersion(..)
+  , samlURN
+  , xpSAMLURN
   ) where
 
 import Data.Monoid ((<>))
-import qualified Network.URI as URI
+import Network.URI (URI(..))
 
 import SAML2.Version
+import SAML2.XML
+import qualified SAML2.XML.Pickle as XP
+import SAML2.Core.Datatypes ()
 
--- |The argument must be a valid URN path (unchecked)
-makeURN :: String -> URI.URI
-makeURN p = URI.nullURI
-  { URI.uriScheme = "urn:"
-  , URI.uriPath = p
+samlURN :: SAMLVersion -> [String] -> URI
+samlURN v l = URI
+  { uriScheme = "urn:"
+  , uriAuthority = Nothing
+  , uriPath = "oasis:names:tc:SAML" <> concatMap (':':) (show v : l)
+  , uriQuery = ""
+  , uriFragment = ""
   }
 
-samlURN :: SAMLVersion -> String -> String -> URI.URI
-samlURN v t n = makeURN $ "oasis:names:tc:SAML" <> concatMap (':':) [show v, t, n]
+xpSAMLURN :: (Enum a, Bounded a) => String -> (a -> (SAMLVersion, String)) -> XP.PU (PreidentifiedURI a)
+xpSAMLURN t g = xpPreidentifiedURI (\a -> let (v, n) = g a in samlURN v [t, n])
+
+-- nsProtocol :: Namespace
+-- nsProtocol = mkNamespace "samlp" $ samlURN SAML20 ["protocol"]

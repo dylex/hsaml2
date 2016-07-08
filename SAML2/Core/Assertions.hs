@@ -1,38 +1,85 @@
+{-# LANGUAGE QuasiQuotes #-}
 -- |
 -- SAML Assertions
 --
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §2
 module SAML2.Core.Assertions where
 
-import qualified SAML2.XML as XML
+import SAML2.XML
+import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Encryption as XEnc
 import qualified SAML2.XML.Signature as DS
 import SAML2.Version
+import SAML2.Core.Namespaces
 import SAML2.Core.Identifiers
 import SAML2.Profiles.ConfirmationMethod
 
+ns :: Namespace
+ns = mkNamespace "saml" $ samlURN SAML20 ["assertion"]
+
+nsName :: XString -> QName
+nsName = mkNName ns
+
 -- |§2.2.1
 data BaseID id = BaseID
-  { baseNameQualifier :: Maybe XML.String
-  , baseSPNameQualifier :: Maybe XML.String
+  { baseNameQualifier :: Maybe XString
+  , baseSPNameQualifier :: Maybe XString
   , baseID :: !id
-  }
+  } deriving (Eq, Show)
+
+xpBaseID :: XP.PU id -> XP.PU (BaseID id)
+xpBaseID idp = [XP.biCase|((n, s), i) <-> BaseID n s i|]
+  XP.>$<  (XP.xpOption (XP.xpAttrQN (nsName "NameQualifier"  ) XP.xpText)
+    XP.>*< XP.xpOption (XP.xpAttrQN (nsName "SPNameQualifier") XP.xpText)
+    XP.>*< idp)
 
 -- |§2.2.3
 data NameID = NameID
-  { nameBaseID :: BaseID XML.String
-  , nameIDFormat :: NameIDFormat
-  , nameSPProvidedID :: Maybe XML.String
-  }
+  { nameBaseID :: BaseID XString
+  , nameIDFormat :: PreidentifiedURI NameIDFormat
+  , nameSPProvidedID :: Maybe XString
+  } deriving (Eq, Show)
+
+instance XP.XmlPickler NameID where
+  xpickle = XP.xpElemQN (nsName "NameID") $
+    [XP.biCase|((f, p), b) <-> NameID b f p|]
+    XP.>$<  (XP.xpDefault (Preidentified NameIDFormatUnspecified) (XP.xpAttrQN (nsName "Format") XP.xpickle)
+      XP.>*< XP.xpOption (XP.xpAttrQN (nsName "SPProvidedID") XP.xpText)
+      XP.>*< xpBaseID XP.xpText)
 
 data Identifier
   = IdentifierName NameID
-  | IdentifierBase (BaseID XML.Nodes)
+  | IdentifierBase (BaseID Nodes)
+  deriving (Eq, Show)
+
+instance XP.XmlPickler Identifier where
+  xpickle = [XP.biCase|
+      Left n <-> IdentifierName n
+      Right b <-> IdentifierBase b |]
+    XP.>$< (XP.xpickle XP.>|< XP.xpElemQN (nsName "BaseID") (xpBaseID XP.xpTrees))
+
+-- |§2.2.4
+type EncryptedID = EncryptedElement Identifier
+
+data EncryptedElement a = EncryptedElement
+  { encryptedData :: XEnc.EncryptedData
+  , encryptedKey :: [XEnc.EncryptedKey]
+  }
+
+data PossiblyEncrypted a
+  = NotEncrypted !a
+  | SoEncrypted (EncryptedElement a)
+
+xpPossiblyEncrypted :: XP.PU a -> XP.PU (EncryptedElement a) -> XP.PU (PossiblyEncrypted a)
+xpPossiblyEncrypted u e = [XP.biCase|
+    Left a <-> NotEncrypted a
+    Right a <-> SoEncrypted a |]
+  XP.>$< (u XP.>|< e)
 
 data AssertionRef
-  = AssertionIDRef XML.ID -- ^§2.3.1
-  | AssertionURIRef XML.AnyURI -- ^§2.3.2
-  | AssertionRef (XEnc.PossiblyEncrypted Assertion)
+  = AssertionIDRef ID -- ^§2.3.1
+  | AssertionURIRef AnyURI -- ^§2.3.2
+  | AssertionRef (PossiblyEncrypted Assertion)
 
 -- |§2.3.3
 data AssertionStatement
@@ -43,8 +90,8 @@ data AssertionStatement
 
 data Assertion = Assertion
   { assertionVersion :: SAMLVersion
-  , assertionID :: XML.ID
-  , assertionIssueInstant :: XML.DateTime
+  , assertionID :: ID
+  , assertionIssueInstant :: DateTime
   , assertionIssuer :: NameID -- ^§2.2.5
   , assertionSignature :: Maybe DS.Signature
   , assertionSubject :: Subject -- ^use 'noSubject' to omit
@@ -54,11 +101,11 @@ data Assertion = Assertion
   }
 
 -- |§2.3.4
-type EncryptedAssertion = XEnc.EncryptedElement Assertion
+type EncryptedAssertion = EncryptedElement Assertion
 
 -- |§2.4.1
 data Subject = Subject
-  { subjectIdentifier :: Maybe (XEnc.PossiblyEncrypted Identifier)
+  { subjectIdentifier :: Maybe (PossiblyEncrypted Identifier)
   , subjectConfirmation :: [SubjectConfirmation]
   }
 
@@ -68,34 +115,34 @@ noSubject = Subject Nothing []
 -- |§2.4.1.1
 data SubjectConfirmation = SubjectConfirmation
   { subjectConfirmationMethod :: ConfirmationMethod
-  , subjectConfirmationIdentifier :: Maybe (XEnc.PossiblyEncrypted Identifier)
+  , subjectConfirmationIdentifier :: Maybe (PossiblyEncrypted Identifier)
   , subjectConfirmationData :: SubjectConfirmationData
   }
 
 -- |§2.4.1.2
 data SubjectConfirmationData = SubjectConfirmationData
   { subjectConfirmationNotBefore
-  , subjectConfirmationNotOnOrAfter :: Maybe XML.DateTime
-  , subjectConfirmationRecipient :: Maybe XML.AnyURI
-  , subjectConfirmationInResponseTo :: Maybe XML.ID
-  , subjectConfirmationAddress :: XML.IP
-  , subjectConfirmationXML :: XML.Nodes
+  , subjectConfirmationNotOnOrAfter :: Maybe DateTime
+  , subjectConfirmationRecipient :: Maybe AnyURI
+  , subjectConfirmationInResponseTo :: Maybe ID
+  , subjectConfirmationAddress :: IP
+  , subjectConfirmationXML :: Nodes
   }
 
 -- |§2.5.1
 data Conditions = Conditions
   { conditionsNotBefore
-  , conditionsNotOnOrAfter :: Maybe XML.DateTime
+  , conditionsNotOnOrAfter :: Maybe DateTime
   , conditions :: [ConditionElement]
   , conditionsOneTimeUse :: Bool
   , conditionsProxyRestriction :: Maybe ProxyRestriction
   }
 data ConditionElement
-  = ConditionAudienceRestriction (XML.List1 Audience) -- ^§2.5.1.4
-  | Condition XML.Node -- ^§2.5.1.3
+  = ConditionAudienceRestriction (List1 Audience) -- ^§2.5.1.4
+  | Condition Node -- ^§2.5.1.3
 
 -- |§2.5.1.4
-newtype Audience = Audience XML.AnyURI
+newtype Audience = Audience AnyURI
 
 -- |§2.5.1.6
 data ProxyRestriction = ProxyRestriction
@@ -107,64 +154,64 @@ data ProxyRestriction = ProxyRestriction
 type Advice = [AdviceElement]
 data AdviceElement
   = AdviceAssertion AssertionRef
-  | Advice XML.Node
+  | Advice Node
 
 -- |§2.7.1
 data Statement
   = StatementAuthn AuthnStatement
   | StatementAttributute AttributeStatement
   | StatementAuthzDecision AuthzDecisionStatement
-  | Statement XML.Node
+  | Statement Node
 
 -- |§2.7.2
 data AuthnStatement = AuthnStatement
-  { authnStatementInstant :: XML.DateTime
-  , authnStatementSessionIndex :: Maybe XML.String
-  , authnStatementSessionNotOnOrAfter :: Maybe XML.DateTime
+  { authnStatementInstant :: DateTime
+  , authnStatementSessionIndex :: Maybe XString
+  , authnStatementSessionNotOnOrAfter :: Maybe DateTime
   , authnStatementSubjectLocality :: Maybe SubjectLocality
   , authnStatementContext :: AuthnContext
   }
 
 -- |§2.7.2.1
 data SubjectLocality = SubjectLocality
-  { subjectLocalityAddress :: Maybe XML.IP
-  , subjectLocalityDNSName :: Maybe XML.String
+  { subjectLocalityAddress :: Maybe IP
+  , subjectLocalityDNSName :: Maybe XString
   }
 
 -- |§2.7.2.2
 data AuthnContext = AuthnContext
-  { authnContextClassRef :: Maybe XML.AnyURI
+  { authnContextClassRef :: Maybe AnyURI
   , authnContextDecl :: Maybe AuthnContextDecl
-  , authnContextAuthenticatingAuthority :: [XML.AnyURI]
+  , authnContextAuthenticatingAuthority :: [AnyURI]
   }
 
 data AuthnContextDecl
-  = AuthnContextDecl XML.Node
-  | AuthnContextDeclRef XML.AnyURI
+  = AuthnContextDecl Node
+  | AuthnContextDeclRef AnyURI
 
 -- |§2.7.3
-newtype AttributeStatement = AttributeStatement (XML.List1 (XEnc.PossiblyEncrypted Attribute))
+newtype AttributeStatement = AttributeStatement (List1 (PossiblyEncrypted Attribute))
 
 -- |§2.7.3.1
 data Attribute = Attribute
-  { attributeName :: XML.String
-  , attributeNameFormat :: AttributeNameFormat
-  , attributeFriendlyName :: Maybe XML.String
-  , attributeXML :: XML.Nodes -- attributes
+  { attributeName :: XString
+  , attributeNameFormat :: PreidentifiedURI AttributeNameFormat
+  , attributeFriendlyName :: Maybe XString
+  , attributeXML :: Nodes -- attributes
   , attributeValues :: [AttributeValue]
   }
 
 -- |§2.7.3.1.1
-newtype AttributeValue = AttributeValue XML.Nodes
+newtype AttributeValue = AttributeValue Nodes
 
 -- |§2.7.3.2
-type EncryptedAttribute = XEnc.EncryptedElement Attribute
+type EncryptedAttribute = EncryptedElement Attribute
 
 -- |§2.7.4
 data AuthzDecisionStatement = AuthzDecisionStatement
-  { authzDecisionStatementResource :: XML.AnyURI
+  { authzDecisionStatementResource :: AnyURI
   , authzDecisionStatementDecision :: DecisionType
-  , authzDecisionStatementAction :: XML.List1 Action
+  , authzDecisionStatementAction :: List1 Action
   , authzDecisionStatementEvidence :: Maybe Evidence
   }
 
@@ -176,8 +223,8 @@ data DecisionType
 
 -- |§2.7.4.2
 data Action = Action
-  { actionNamespace :: ActionNamespace
-  , action :: XML.String
+  { actionNamespace :: PreidentifiedURI ActionNamespace
+  , action :: XString
   }
 
 -- |§2.7.4.3

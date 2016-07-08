@@ -1,10 +1,12 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 -- |
 -- SAML-Defined Identifiers
 --
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §8
 module SAML2.Core.Identifiers where
 
-import qualified SAML2.XML as XML
+import SAML2.XML
+import qualified SAML2.XML.Pickle as XP
 import SAML2.Core.Namespaces
 
 -- |§8.1
@@ -13,19 +15,27 @@ data ActionNamespace
   | ActionNamespaceRWEDCNegation -- ^§8.1.2: RWEDC ~RWEDC
   | ActionNamespaceGHPP -- ^§8.1.3: GET HEAD PUT POST
   | ActionNamespaceUNIX -- ^§8.1.4: octal
+  deriving (Eq, Enum, Bounded, Show)
+
+instance XP.XmlPickler (PreidentifiedURI ActionNamespace) where
+  xpickle = xpSAMLURN "action" f where
+    f ActionNamespaceRWEDC          = (SAML10, "rwedc")
+    f ActionNamespaceRWEDCNegation  = (SAML10, "rwedc-negation")
+    f ActionNamespaceGHPP           = (SAML10, "ghpp")
+    f ActionNamespaceUNIX           = (SAML10, "unix")
 
 -- |§8.2
 data AttributeNameFormat
   = AttributeNameFormatUnspecified -- ^§8.2.1: Text
   | AttributeNameFormatURI -- ^§8.2.2: URI
   | AttributeNameFormatBasic -- ^§8.2.3: Name
-  | AttributeNameFormat XML.AnyURI
+  deriving (Eq, Enum, Bounded, Show)
 
-attributeNameFormatURN :: AttributeNameFormat -> XML.AnyURI
-attributeNameFormatURN AttributeNameFormatUnspecified = samlURN SAML20 "attrname-format" "unspecified"
-attributeNameFormatURN AttributeNameFormatURI         = samlURN SAML20 "attrname-format" "uri"
-attributeNameFormatURN AttributeNameFormatBasic       = samlURN SAML20 "attrname-format" "basic"
-attributeNameFormatURN (AttributeNameFormat u) = u
+instance XP.XmlPickler (PreidentifiedURI AttributeNameFormat) where
+  xpickle = xpSAMLURN "attrname-format" f where
+    f AttributeNameFormatUnspecified = (SAML20, "unspecified")
+    f AttributeNameFormatURI         = (SAML20, "uri")
+    f AttributeNameFormatBasic       = (SAML20, "basic")
 
 -- |§8.3
 data NameIDFormat
@@ -37,16 +47,15 @@ data NameIDFormat
   | NameIDFormatEntity -- ^§8.3.6: SAML endpoint (BaseId and SPProvidedID must be Nothing)
   | NameIDFormatPersistent -- ^§8.3.7: String <= 256 char (NameQualifier same as idp ident/Nothing, SPNameQualifier same as sp ident/Nothing, SPProvidedID alt ident from sp)
   | NameIDFormatTransient -- ^§8.3.8: String <= 256 char
-  | NameIDFormat XML.AnyURI
+  deriving (Eq, Enum, Bounded, Show)
   
-nameIDFormatURN :: NameIDFormat -> XML.AnyURI
-nameIDFormatURN NameIDFormatUnspecified = samlURN SAML11 "nameid-format" "unspecified"
-nameIDFormatURN NameIDFormatEmail       = samlURN SAML11 "nameid-format" "emailAddress"
-nameIDFormatURN NameIDFormatX509        = samlURN SAML11 "nameid-format" "X509SubjectName"
-nameIDFormatURN NameIDFormatWindows     = samlURN SAML11 "nameid-format" "WindowsDomainQualifiedName"
-nameIDFormatURN NameIDFormatKerberos    = samlURN SAML20 "nameid-format" "kerberos"
-nameIDFormatURN NameIDFormatEntity      = samlURN SAML20 "nameid-format" "entity"
-nameIDFormatURN NameIDFormatPersistent  = samlURN SAML20 "nameid-format" "persistent"
-nameIDFormatURN NameIDFormatTransient   = samlURN SAML20 "nameid-format" "transient"
-nameIDFormatURN (NameIDFormat u) = u
-
+instance XP.XmlPickler (PreidentifiedURI NameIDFormat) where
+  xpickle = xpSAMLURN "nameid-format" f where
+    f NameIDFormatUnspecified = (SAML11, "unspecified")
+    f NameIDFormatEmail       = (SAML11, "emailAddress")
+    f NameIDFormatX509        = (SAML11, "X509SubjectName")
+    f NameIDFormatWindows     = (SAML11, "WindowsDomainQualifiedName")
+    f NameIDFormatKerberos    = (SAML20, "kerberos")
+    f NameIDFormatEntity      = (SAML20, "entity")
+    f NameIDFormatPersistent  = (SAML20, "persistent")
+    f NameIDFormatTransient   = (SAML20, "transient")
