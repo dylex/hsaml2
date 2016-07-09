@@ -1,4 +1,4 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, QuasiQuotes #-}
 -- |
 -- SAML Assertions
 --
@@ -7,6 +7,7 @@ module SAML2.Core.Assertions where
 
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
+import qualified SAML2.XML.Schema as XS
 import qualified SAML2.XML.Encryption as XEnc
 import qualified SAML2.XML.Signature as DS
 import SAML2.Version
@@ -29,8 +30,8 @@ data BaseID id = BaseID
 
 xpBaseID :: XP.PU id -> XP.PU (BaseID id)
 xpBaseID idp = [XP.biCase|((n, s), i) <-> BaseID n s i|]
-  XP.>$<  (XP.xpOption (XP.xpAttrQN (nsName "NameQualifier"  ) XP.xpText)
-    XP.>*< XP.xpOption (XP.xpAttrQN (nsName "SPNameQualifier") XP.xpText)
+  XP.>$<  (XP.xpOption (XP.xpAttr "NameQualifier"   XS.xpString)
+    XP.>*< XP.xpOption (XP.xpAttr "SPNameQualifier" XS.xpString)
     XP.>*< idp)
 
 -- |§2.2.3
@@ -43,9 +44,9 @@ data NameID = NameID
 instance XP.XmlPickler NameID where
   xpickle = XP.xpElemQN (nsName "NameID") $
     [XP.biCase|((f, p), b) <-> NameID b f p|]
-    XP.>$<  (XP.xpDefault (Preidentified NameIDFormatUnspecified) (XP.xpAttrQN (nsName "Format") XP.xpickle)
-      XP.>*< XP.xpOption (XP.xpAttrQN (nsName "SPProvidedID") XP.xpText)
-      XP.>*< xpBaseID XP.xpText)
+    XP.>$<  (XP.xpDefault (Preidentified NameIDFormatUnspecified) (XP.xpAttr "Format" XP.xpickle)
+      XP.>*< XP.xpOption (XP.xpAttr "SPProvidedID" XS.xpString)
+      XP.>*< xpBaseID XS.xpString)
 
 data Identifier
   = IdentifierName NameID
@@ -61,10 +62,18 @@ instance XP.XmlPickler Identifier where
 -- |§2.2.4
 type EncryptedID = EncryptedElement Identifier
 
+instance XP.XmlPickler EncryptedID where
+  xpickle = XP.xpElemQN (nsName "EncryptedID") xpEncryptedElement
+
 data EncryptedElement a = EncryptedElement
   { encryptedData :: XEnc.EncryptedData
   , encryptedKey :: [XEnc.EncryptedKey]
   }
+
+xpEncryptedElement :: XP.PU (EncryptedElement a)
+xpEncryptedElement = [XP.biCase|(d, k) <-> EncryptedElement d k|]
+  XP.>$< (XP.xpickle
+    XP.>*< XP.xpList XP.xpickle)
 
 data PossiblyEncrypted a
   = NotEncrypted !a

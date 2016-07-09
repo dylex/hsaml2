@@ -168,11 +168,13 @@ data KeyInfo = KeyInfo
   , keyInfoElements :: List1 KeyInfoElement
   } deriving (Eq, Show)
 
+xpKeyInfoType :: XP.PU KeyInfo
+xpKeyInfoType = [XP.biCase|(i, l) <-> KeyInfo i l|] 
+  XP.>$< (XP.xpOption (XP.xpAttr "Id" XS.xpID)
+    XP.>*< xpList1 XP.xpickle)
+
 instance XP.XmlPickler KeyInfo where
-  xpickle = XP.xpElemQN (nsName "KeyInfo") $
-    [XP.biCase|(i, l) <-> KeyInfo i l|] 
-    XP.>$< (XP.xpOption (XP.xpAttr "Id" XS.xpID)
-      XP.>*< xpList1 XP.xpickle)
+  xpickle = XP.xpElemQN (nsName "KeyInfo") xpKeyInfoType
 
 data KeyInfoElement
   = KeyInfoKeyName XString -- ^§4.4.1
@@ -207,7 +209,7 @@ instance XP.XmlPickler KeyInfoElement where
       Left (Left (Right l)) <-> KeyInfoSPKIData l
       Left (Right m) <-> KeyInfoMgmtData m
       Right x <-> KeyInfoElement x|]
-    XP.>$<  (XP.xpElemQN (nsName "KeyName") XP.xpText
+    XP.>$<  (XP.xpElemQN (nsName "KeyName") XS.xpString
       XP.>|< XP.xpickle
       XP.>|< XP.xpElemQN (nsName "RetrievalMethod")
               (XP.xpAttr "URI" XP.xpickle
@@ -219,7 +221,7 @@ instance XP.XmlPickler KeyInfoElement where
         XP.>*< XP.xpOption (XP.xpElemQN (nsName "PGPKeyPacket") XS.xpBase64Binary)
         XP.>*< XP.xpTrees)
       XP.>|< XP.xpElemQN (nsName "SPKIData") (xpList1 XP.xpickle)
-      XP.>|< XP.xpElemQN (nsName "MgmtData") XP.xpText
+      XP.>|< XP.xpElemQN (nsName "MgmtData") XS.xpString
       XP.>|< XP.xpTree) -- elem only
 
 -- |§4.4.2
@@ -263,7 +265,7 @@ instance XP.XmlPickler KeyValue where
 type X509DistinguishedName = XString
 
 xpX509DistinguishedName :: XP.PU X509DistinguishedName
-xpX509DistinguishedName = XP.xpText
+xpX509DistinguishedName = XS.xpString
 
 data X509Element
   = X509IssuerSerial
@@ -390,11 +392,17 @@ instance XP.XmlPickler (PreidentifiedURI EncodingAlgorithm) where
 -- |§6.2
 data DigestAlgorithm
   = DigestSHA1 -- ^§6.2.1
+  | DigestSHA256 -- ^xmlenc §5.7.2
+  | DigestSHA512 -- ^xmlenc §5.7.3
+  | DigestRIPEMD160 -- ^xmlenc §5.7.4
   deriving (Eq, Bounded, Enum, Show)
 
 instance XP.XmlPickler (PreidentifiedURI DigestAlgorithm) where
   xpickle = xpPreidentifiedURI f where
     f DigestSHA1 = nsFrag "sha1"
+    f DigestSHA256 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha256"
+    f DigestSHA512 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha512"
+    f DigestRIPEMD160 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#ripemd160"
 
 -- |§6.3
 data MACAlgorithm

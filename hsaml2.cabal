@@ -14,6 +14,7 @@ tested-with:         GHC == 7.10.3
 
 extra-source-files:
   test/XML/signature-example.xml
+  test/XML/encryption-example.xml
 
 source-repository head
   type: git
