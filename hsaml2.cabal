@@ -10,9 +10,14 @@ copyright:           2016
 category:            Security, Network, Web
 build-type:          Simple
 cabal-version:       >=1.10
+tested-with:         GHC == 7.10.3
 
 extra-source-files:
   test/XML/signature-example.xml
+
+source-repository head
+  type: git
+  location: https://github.com/dylex/hsaml2
 
 library
   exposed-modules:
