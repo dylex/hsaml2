@@ -20,7 +20,7 @@ data ActionNamespace
   deriving (Eq, Enum, Bounded, Show)
 
 instance XP.XmlPickler (PreidentifiedURI ActionNamespace) where
-  xpickle = xpSAMLURN "action" f where
+  xpickle = xpPreidentifiedSAMLURN "action" f where
     f ActionNamespaceRWEDC          = (SAML10, "rwedc")
     f ActionNamespaceRWEDCNegation  = (SAML10, "rwedc-negation")
     f ActionNamespaceGHPP           = (SAML10, "ghpp")
@@ -34,7 +34,7 @@ data AttributeNameFormat
   deriving (Eq, Enum, Bounded, Show)
 
 instance XP.XmlPickler (PreidentifiedURI AttributeNameFormat) where
-  xpickle = xpSAMLURN "attrname-format" f where
+  xpickle = xpPreidentifiedSAMLURN "attrname-format" f where
     f AttributeNameFormatUnspecified = (SAML20, "unspecified")
     f AttributeNameFormatURI         = (SAML20, "uri")
     f AttributeNameFormatBasic       = (SAML20, "basic")
@@ -52,7 +52,7 @@ data NameIDFormat
   deriving (Eq, Enum, Bounded, Show)
   
 instance XP.XmlPickler (PreidentifiedURI NameIDFormat) where
-  xpickle = xpSAMLURN "nameid-format" f where
+  xpickle = xpPreidentifiedSAMLURN "nameid-format" f where
     f NameIDFormatUnspecified = (SAML11, "unspecified")
     f NameIDFormatEmail       = (SAML11, "emailAddress")
     f NameIDFormatX509        = (SAML11, "X509SubjectName")
@@ -61,3 +61,24 @@ instance XP.XmlPickler (PreidentifiedURI NameIDFormat) where
     f NameIDFormatEntity      = (SAML20, "entity")
     f NameIDFormatPersistent  = (SAML20, "persistent")
     f NameIDFormatTransient   = (SAML20, "transient")
+
+-- |§8.4
+data Consent
+  = ConsentUnspecified -- ^§8.4.1
+  | ConsentObtained -- ^§8.4.2
+  | ConsentPrior -- ^§8.4.3
+  | ConsentImplicit -- ^§8.4.4
+  | ConsentExplicit -- ^§8.4.5
+  | ConsentUnavailable -- ^§8.4.6
+  | ConsentInapplicable -- ^§8.4.7
+  deriving (Eq, Enum, Bounded, Show)
+
+instance XP.XmlPickler (PreidentifiedURI Consent) where
+  xpickle = xpPreidentifiedSAMLURN "consent" f where
+    f ConsentUnspecified  = (SAML20, "unspecified")
+    f ConsentObtained     = (SAML20, "obtained")
+    f ConsentPrior        = (SAML20, "prior")
+    f ConsentImplicit     = (SAML20, "current-implicit")
+    f ConsentExplicit     = (SAML20, "current-explicit")
+    f ConsentUnavailable  = (SAML20, "unavailable")
+    f ConsentInapplicable = (SAML20, "inapplicable")

@@ -19,7 +19,7 @@ data ConfirmationMethod
   deriving (Eq, Enum, Bounded, Show)
 
 instance XP.XmlPickler (PreidentifiedURI ConfirmationMethod) where
-  xpickle = xpSAMLURN "cm" f where
+  xpickle = xpPreidentifiedSAMLURN "cm" f where
     f ConfirmationMethodHolderOfKey   = (SAML20, "holder-of-key")
     f ConfirmationMethodSenderVouches = (SAML20, "sender-vouches")
     f ConfirmationMethodBearer        = (SAML20, "bearer")

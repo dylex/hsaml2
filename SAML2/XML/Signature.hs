@@ -43,7 +43,7 @@ data Signature = Signature
 instance XP.XmlPickler Signature where
   xpickle = xpElem "Signature" $
     [XP.biCase|((((i, s), v), k), o) <-> Signature i s v k o|] 
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
@@ -58,7 +58,7 @@ data SignatureValue = SignatureValue
 instance XP.XmlPickler SignatureValue where
   xpickle = xpElem "SignatureValue" $
     [XP.biCase|(i, v) <-> SignatureValue i v|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpOption (XP.xpAttr "Id" XS.xpID))
+    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttrImplied "Id" XS.xpID)
       XP.>*< XS.xpBase64Binary)
 
 -- |§4.3
@@ -72,7 +72,7 @@ data SignedInfo = SignedInfo
 instance XP.XmlPickler SignedInfo where
   xpickle = xpElem "SignedInfo" $
     [XP.biCase|(((i, c), s), r) <-> SignedInfo i c s r|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpOption (XP.xpAttr "Id" XS.xpID))
+    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttrImplied "Id" XS.xpID)
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpList1 XP.xpickle)
@@ -116,9 +116,9 @@ data Reference = Reference
 instance XP.XmlPickler Reference where
   xpickle = xpElem "Reference" $
     [XP.biCase|(((((i, u), t), f), m), v) <-> Reference i u t f m v|] 
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
-      XP.>*< XP.xpOption (XP.xpAttr "URI" XP.xpickle)
-      XP.>*< XP.xpOption (XP.xpAttr "Type" XP.xpickle)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
+      XP.>*< XP.xpAttrImplied "URI" XP.xpickle
+      XP.>*< XP.xpAttrImplied "Type" XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpElem "DigestValue" XS.xpBase64Binary)
@@ -175,7 +175,7 @@ data KeyInfo = KeyInfo
 
 xpKeyInfoType :: XP.PU KeyInfo
 xpKeyInfoType = [XP.biCase|(i, l) <-> KeyInfo i l|] 
-  XP.>$< (XP.xpOption (XP.xpAttr "Id" XS.xpID)
+  XP.>$< (XP.xpAttrImplied "Id" XS.xpID
     XP.>*< xpList1 XP.xpickle)
 
 instance XP.XmlPickler KeyInfo where
@@ -218,7 +218,7 @@ instance XP.XmlPickler KeyInfoElement where
       XP.>|< XP.xpickle
       XP.>|< xpElem "RetrievalMethod"
               (XP.xpAttr "URI" XP.xpickle
-        XP.>*< XP.xpOption (XP.xpAttr "Type" XP.xpickle)
+        XP.>*< XP.xpAttrImplied "Type" XP.xpickle
         XP.>*< XP.xpOption XP.xpickle)
       XP.>|< xpElem "X509Data" (xpList1 XP.xpickle)
       XP.>|< xpElem "PGPData"
@@ -325,9 +325,9 @@ data Object = Object
 instance XP.XmlPickler Object where
   xpickle = xpElem "Object" $
     [XP.biCase|(((i, m), e), x) <-> Object i m e x|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpOption (XP.xpAttr "Id" XS.xpID)
-      XP.>*< XP.xpOption (XP.xpAttr "MimeType" XS.xpString)
-      XP.>*< XP.xpOption (XP.xpAttr "Encoding" XP.xpickle))
+    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttrImplied "Id" XS.xpID
+      XP.>*< XP.xpAttrImplied "MimeType" XS.xpString
+      XP.>*< XP.xpAttrImplied "Encoding" XP.xpickle)
       XP.>*< XP.xpList XP.xpickle)
 
 data ObjectElement
@@ -357,7 +357,7 @@ data Manifest = Manifest
 instance XP.XmlPickler Manifest where
   xpickle = xpElem "Manifest" $
     [XP.biCase|(i, r) <-> Manifest i r|] 
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< xpList1 XP.xpickle)
 
 -- |§5.2
@@ -369,7 +369,7 @@ data SignatureProperties = SignatureProperties
 instance XP.XmlPickler SignatureProperties where
   xpickle = xpElem "SignatureProperties" $
     [XP.biCase|(i, p) <-> SignatureProperties i p|] 
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< xpList1 XP.xpickle)
 
 data SignatureProperty = SignatureProperty
@@ -381,7 +381,7 @@ data SignatureProperty = SignatureProperty
 instance XP.XmlPickler SignatureProperty where
   xpickle = xpElem "SignatureProperty" $
     [XP.biCase|((i, t), x) <-> SignatureProperty i t x|] 
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< XP.xpAttr "Target" XP.xpickle
       XP.>*< xpList1 XP.xpTree)
 

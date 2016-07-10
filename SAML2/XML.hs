@@ -3,6 +3,7 @@ module SAML2.XML
   , module SAML2.Core.Datatypes
   , URI
   , IP, xpIP
+  , xpEnum
   , Preidentified(..)
   , xpPreidentified
   , PreidentifiedURI
@@ -20,6 +21,13 @@ type IP = XS.String
 
 xpIP :: XP.PU IP
 xpIP = XS.xpString
+
+xpEnum :: (Eq b, Bounded a, Enum a) => XP.PU b -> String -> (a -> b) -> XP.PU a
+xpEnum b t g = XP.xpWrapEither
+  ( \u -> maybe (Left ("invalid " ++ t)) Right $ lookup u l
+  , g
+  ) b
+  where l = [ (g a, a) | a <- [minBound..maxBound] ]
 
 data Preidentified b a
   = Preidentified !a

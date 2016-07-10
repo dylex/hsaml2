@@ -109,12 +109,21 @@ instance XP.XmlPickler AssertionRef where
       XP.>|< xpElem "AssertionURIRef" XP.xpickle
       XP.>|< xpPossiblyEncrypted)
 
+-- |§2.2.5
+newtype Issuer = Issuer NameID
+  deriving (Eq, Show)
+
+instance XP.XmlPickler Issuer where
+  xpickle = xpElem "Issuer" $ [XP.biCase|
+      n <-> Issuer n|]
+    XP.>$< XP.xpickle
+
 -- |§2.3.3
 data Assertion = Assertion
   { assertionVersion :: SAMLVersion
   , assertionID :: ID
   , assertionIssueInstant :: DateTime
-  , assertionIssuer :: NameID -- ^§2.2.5
+  , assertionIssuer :: Issuer
   , assertionSignature :: Maybe DS.Signature
   , assertionSubject :: Subject -- ^use 'noSubject' to omit
   , assertionConditions :: Maybe Conditions
@@ -131,7 +140,7 @@ instance XP.XmlPickler Assertion where
     XP.>$<  (XP.xpAttr "Version" XP.xpickle
       XP.>*< XP.xpAttr "ID" XS.xpID
       XP.>*< XP.xpAttr "IssueInstant" XP.xpickle
-      XP.>*< xpElem "Issuer" XP.xpickle
+      XP.>*< XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
@@ -406,12 +415,7 @@ data DecisionType
   deriving (Eq, Enum, Bounded, Show)
 
 instance XP.XmlPickler DecisionType where
-  xpickle = XP.xpWrapEither
-    ( \s -> maybe (Left "invalid DecisionType") Right $ lookup s l
-    , g
-    ) $ XP.xpTextDT (XPS.scDT (namespaceURI ns) "DecisionType" [])
-    where
-    l = [ (g a, a) | a <- [minBound..maxBound] ]
+  xpickle = xpEnum (XP.xpTextDT (XPS.scDT (namespaceURI ns) "DecisionType" [])) "DecisionType" g where
     g DecisionTypePermit = "Permit"
     g DecisionTypeDeny = "Deny"
     g DecisionTypeIndeterminate = "Indeterminate"

@@ -32,6 +32,7 @@ library
     SAML2.Core.Namespaces
     SAML2.Core.Datatypes
     SAML2.Core.Assertions
+    SAML2.Core.Protocols
     SAML2.Core.Versioning
     SAML2.Core.Identifiers
     SAML2.Profiles

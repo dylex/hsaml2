@@ -5,7 +5,8 @@
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §1.2
 module SAML2.Core.Namespaces 
   ( samlURN
-  , xpSAMLURN
+  , xpEnumSAMLURN
+  , xpPreidentifiedSAMLURN
   ) where
 
 import Data.Monoid ((<>))
@@ -25,8 +26,11 @@ samlURN v l = URI
   , uriFragment = ""
   }
 
-xpSAMLURN :: (Enum a, Bounded a) => String -> (a -> (SAMLVersion, String)) -> XP.PU (PreidentifiedURI a)
-xpSAMLURN t g = xpPreidentifiedURI (\a -> let (v, n) = g a in samlURN v [t, n])
+xpEnumSAMLURN :: (Enum a, Bounded a) => String -> (a -> (SAMLVersion, String)) -> XP.PU a
+xpEnumSAMLURN t g = xpEnum XP.xpickle t (\a -> let (v, n) = g a in samlURN v [t, n])
+
+xpPreidentifiedSAMLURN :: (Enum a, Bounded a) => String -> (a -> (SAMLVersion, String)) -> XP.PU (PreidentifiedURI a)
+xpPreidentifiedSAMLURN t g = xpPreidentifiedURI (\a -> let (v, n) = g a in samlURN v [t, n])
 
 -- nsProtocol :: Namespace
 -- nsProtocol = mkNamespace "samlp" $ samlURN SAML20 ["protocol"]
