@@ -1,4 +1,7 @@
-{-# LANGUAGE FlexibleContexts, TypeSynonymInstances, FlexibleInstances, QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 -- |
 -- XML Encryption Syntax and Processing
 --
@@ -19,6 +22,9 @@ ns = mkNamespace "xenc" $ nsFrag ""
 nsName :: XString -> QName
 nsName = mkNName ns
 
+xpElem :: String -> XP.PU a -> XP.PU a
+xpElem = XP.xpElemQN . nsName
+
 -- |§3.1
 data EncryptedType = EncryptedType
   { encryptedID :: Maybe ID
@@ -33,10 +39,10 @@ data EncryptedType = EncryptedType
 
 instance XP.XmlPickler EncryptedType where
   xpickle = [XP.biCase|(((((((i, t), m), e), c), k), d), p) <-> EncryptedType i t m e c k d p|]
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
-      XP.>*< XP.xpOption (XP.xpAttr "Type" XP.xpickle)
-      XP.>*< XP.xpOption (XP.xpAttr "MimeType" XS.xpString)
-      XP.>*< XP.xpOption (XP.xpAttr "Encoding" XP.xpickle)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
+      XP.>*< XP.xpAttrImplied "Type" XP.xpickle
+      XP.>*< XP.xpAttrImplied "MimeType" XS.xpString
+      XP.>*< XP.xpAttrImplied "Encoding" XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpickle
@@ -52,11 +58,11 @@ data EncryptionMethod = EncryptionMethod
   } deriving (Eq, Show)
 
 instance XP.XmlPickler EncryptionMethod where
-  xpickle = XP.xpElemQN (nsName "EncryptionMethod") $
+  xpickle = xpElem "EncryptionMethod" $
     [XP.biCase|((((a, s), p), d), x) <-> EncryptionMethod a s p d x|] 
     XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
-      XP.>*< XP.xpOption (XP.xpElemQN (nsName "KeySize") XP.xpickle)
-      XP.>*< XP.xpOption (XP.xpElemQN (nsName "OAEPparams") XS.xpBase64Binary)
+      XP.>*< XP.xpOption (xpElem "KeySize" XP.xpickle)
+      XP.>*< XP.xpOption (xpElem "OAEPparams" XS.xpBase64Binary)
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpTrees)
 
@@ -70,21 +76,21 @@ data CipherData
   deriving (Eq, Show)
 
 instance XP.XmlPickler CipherData where
-  xpickle = XP.xpElemQN (nsName "CipherData") $
+  xpickle = xpElem "CipherData" $
     [XP.biCase|
       Left b <-> CipherValue b
       Right (u, t) <-> CipherReference u t |]
-    XP.>$<  (XP.xpElemQN (nsName "CipherValue") XS.xpBase64Binary
-      XP.>|< XP.xpElemQN (nsName "CipherReference")
+    XP.>$<  (xpElem "CipherValue" XS.xpBase64Binary
+      XP.>|< xpElem "CipherReference"
               (XP.xpAttr "URI" XP.xpickle
-        XP.>*< XP.xpElemQN (nsName "Transforms") (xpList1 XP.xpickle)))
+        XP.>*< xpElem "Transforms" (xpList1 XP.xpickle)))
 
 -- |§3.4
 newtype EncryptedData = EncryptedData{ encryptedData :: EncryptedType }
   deriving (Eq, Show)
 
 instance XP.XmlPickler EncryptedData where
-  xpickle = XP.xpElemQN (nsName "EncryptedData") $
+  xpickle = xpElem "EncryptedData" $
     [XP.biCase|e <-> EncryptedData e|] 
     XP.>$< XP.xpickle
 
@@ -97,15 +103,15 @@ data EncryptedKey = EncryptedKey
   } deriving (Eq, Show)
 
 instance XP.XmlPickler EncryptedKey where
-  xpickle = XP.xpElemQN (nsName "EncryptedKey") $
+  xpickle = xpElem "EncryptedKey" $
     [XP.biCase|
       (e, ((r, Nothing), n)) <-> EncryptedKey e r [] n
       (e, ((r, Just l), n)) <-> EncryptedKey e r l n
     |] 
     XP.>$< (XP.xpickle
-      XP.>*<  (XP.xpOption (XP.xpAttr "Recipient" XS.xpString)
-        XP.>*< XP.xpOption (XP.xpElemQN (nsName "ReferenceList") $ XP.xpList1 XP.xpickle)
-        XP.>*< XP.xpOption (XP.xpElemQN (nsName "CarriedKeyName") XS.xpString)))
+      XP.>*<  (XP.xpAttrImplied "Recipient" XS.xpString
+        XP.>*< XP.xpOption (xpElem "ReferenceList" $ XP.xpList1 XP.xpickle)
+        XP.>*< XP.xpOption (xpElem "CarriedKeyName" XS.xpString)))
 
 -- |§3.6
 data Reference
@@ -125,7 +131,7 @@ instance XP.XmlPickler Reference where
       Right (u, r) <-> KeyReference u r |]
     XP.>$< (refs "DataReference" XP.>|< refs "KeyReference")
     where
-    refs n = XP.xpElemQN (nsName n)
+    refs n = xpElem n
       $ XP.xpCheckEmptyAttributes (XP.xpAttr "URI" XP.xpickle)
       XP.>*< XP.xpTrees
 
@@ -136,9 +142,9 @@ data EncryptionProperties = EncryptionProperties
   } deriving (Eq, Show)
 
 instance XP.XmlPickler EncryptionProperties where
-  xpickle = XP.xpElemQN (nsName "EncryptionProperties") $
+  xpickle = xpElem "EncryptionProperties" $
     [XP.biCase|(i, l) <-> EncryptionProperties i l|] 
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< xpList1 XP.xpickle)
 
 data EncryptionProperty = EncryptionProperty
@@ -148,10 +154,10 @@ data EncryptionProperty = EncryptionProperty
   } deriving (Eq, Show)
 
 instance XP.XmlPickler EncryptionProperty where
-  xpickle = XP.xpElemQN (nsName "EncryptionProperty") $
+  xpickle = xpElem "EncryptionProperty" $
     [XP.biCase|((i, t), x) <-> EncryptionProperty i t x|] 
-    XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
-      XP.>*< XP.xpOption (XP.xpAttr "Target" XP.xpickle)
+    XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
+      XP.>*< XP.xpAttrImplied "Target" XP.xpickle
       XP.>*< XP.xpTrees) -- really only should allow xml: attributes
 
 -- |§5.1
@@ -184,10 +190,10 @@ data AgreementMethod = AgreementMethod
   }
 
 instance XP.XmlPickler AgreementMethod where
-  xpickle = XP.xpElemQN (nsName "AgreementMethod") $
+  xpickle = xpElem "AgreementMethod" $
     [XP.biCase|((((a, n), d), o), r) <-> AgreementMethod a n d o r|]
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
-      XP.>*< XP.xpOption (XP.xpElemQN (nsName "KA-Nonce") XS.xpBase64Binary)
+      XP.>*< XP.xpOption (xpElem "KA-Nonce" XS.xpBase64Binary)
       XP.>*< XP.xpOption XP.xpickle
-      XP.>*< XP.xpOption (XP.xpElemQN (nsName "OriginatorKeyInfo") DS.xpKeyInfoType)
-      XP.>*< XP.xpOption (XP.xpElemQN (nsName "RecipientKeyInfo") DS.xpKeyInfoType))
+      XP.>*< XP.xpOption (xpElem "OriginatorKeyInfo" DS.xpKeyInfoType)
+      XP.>*< XP.xpOption (xpElem "RecipientKeyInfo" DS.xpKeyInfoType))

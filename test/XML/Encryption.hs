@@ -29,8 +29,8 @@ tests = U.test
           [])
         [])
       (Just $ KeyInfo Nothing
-        (KeyInfoKeyName "Joseph"
-        :| KeyInfoRetrievalMethod
+        (KeyName "Joseph"
+        :| RetrievalMethod
           (readURI "http://exmample.org/Reagle/PublicKey")
           (Just $ readURI "http://www.w3.org/2001/04/xmlenc#EncryptedKey")
           Nothing

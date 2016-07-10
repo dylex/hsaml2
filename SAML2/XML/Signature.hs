@@ -1,4 +1,6 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 -- |
 -- XML Signature Syntax and Processing
 --
@@ -20,6 +22,9 @@ ns = mkNamespace "ds" $ nsFrag ""
 nsName :: XString -> QName
 nsName = mkNName ns
 
+xpElem :: String -> XP.PU a -> XP.PU a
+xpElem = XP.xpElemQN . nsName
+
 -- |§4.0.1
 type CryptoBinary = Integer -- as Base64Binary
 
@@ -36,7 +41,7 @@ data Signature = Signature
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Signature where
-  xpickle = XP.xpElemQN (nsName "Signature") $
+  xpickle = xpElem "Signature" $
     [XP.biCase|((((i, s), v), k), o) <-> Signature i s v k o|] 
     XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
       XP.>*< XP.xpickle
@@ -51,7 +56,7 @@ data SignatureValue = SignatureValue
   } deriving (Eq, Show)
 
 instance XP.XmlPickler SignatureValue where
-  xpickle = XP.xpElemQN (nsName "SignatureValue") $
+  xpickle = xpElem "SignatureValue" $
     [XP.biCase|(i, v) <-> SignatureValue i v|] 
     XP.>$< (XP.xpCheckEmptyAttributes (XP.xpOption (XP.xpAttr "Id" XS.xpID))
       XP.>*< XS.xpBase64Binary)
@@ -65,7 +70,7 @@ data SignedInfo = SignedInfo
   } deriving (Eq, Show)
 
 instance XP.XmlPickler SignedInfo where
-  xpickle = XP.xpElemQN (nsName "SignedInfo") $
+  xpickle = xpElem "SignedInfo" $
     [XP.biCase|(((i, c), s), r) <-> SignedInfo i c s r|] 
     XP.>$< (XP.xpCheckEmptyAttributes (XP.xpOption (XP.xpAttr "Id" XS.xpID))
       XP.>*< XP.xpickle
@@ -79,7 +84,7 @@ data CanonicalizationMethod = CanonicalizationMethod
   } deriving (Eq, Show)
 
 instance XP.XmlPickler CanonicalizationMethod where
-  xpickle = XP.xpElemQN (nsName "CanonicalizationMethod") $
+  xpickle = xpElem "CanonicalizationMethod" $
     [XP.biCase|(a, x) <-> CanonicalizationMethod a x|] 
     XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
       XP.>*< XP.xpTrees)
@@ -92,10 +97,10 @@ data SignatureMethod = SignatureMethod
   } deriving (Eq, Show)
 
 instance XP.XmlPickler SignatureMethod where
-  xpickle = XP.xpElemQN (nsName "SignatureMethod") $
+  xpickle = xpElem "SignatureMethod" $
     [XP.biCase|((a, l), x) <-> SignatureMethod a l x|] 
     XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
-      XP.>*< XP.xpOption (XP.xpElemQN (nsName "HMACOutputLength") XP.xpickle)
+      XP.>*< XP.xpOption (xpElem "HMACOutputLength" XP.xpickle)
       XP.>*< XP.xpTrees)
 
 -- |§4.3.3
@@ -109,21 +114,21 @@ data Reference = Reference
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Reference where
-  xpickle = XP.xpElemQN (nsName "Reference") $
+  xpickle = xpElem "Reference" $
     [XP.biCase|(((((i, u), t), f), m), v) <-> Reference i u t f m v|] 
     XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
       XP.>*< XP.xpOption (XP.xpAttr "URI" XP.xpickle)
       XP.>*< XP.xpOption (XP.xpAttr "Type" XP.xpickle)
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpickle
-      XP.>*< XP.xpElemQN (nsName "DigestValue") XS.xpBase64Binary)
+      XP.>*< xpElem "DigestValue" XS.xpBase64Binary)
 
 -- |§4.3.3.4
 newtype Transforms = Transforms{ transforms :: List1 Transform }
   deriving (Eq, Show)
 
 instance XP.XmlPickler Transforms where
-  xpickle = XP.xpElemQN (nsName "Transforms") $
+  xpickle = xpElem "Transforms" $
     [XP.biCase|l <-> Transforms l|]
     XP.>$< xpList1 XP.xpickle
 
@@ -133,7 +138,7 @@ data Transform = Transform
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Transform where
-  xpickle = XP.xpElemQN (nsName "Transform") $
+  xpickle = xpElem "Transform" $
     [XP.biCase|(a, l) <-> Transform a l|]
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
       XP.>*< XP.xpList XP.xpickle)
@@ -147,7 +152,7 @@ instance XP.XmlPickler TransformElement where
   xpickle = [XP.biCase|
       Left s  <-> TransformElementXPath s
       Right x <-> TransformElement x |]
-    XP.>$< (XP.xpElemQN (nsName "XPath") XS.xpString
+    XP.>$< (xpElem "XPath" XS.xpString
       XP.>|< XP.xpTree)
 
 -- |§4.3.3.5
@@ -157,7 +162,7 @@ data DigestMethod = DigestMethod
   } deriving (Eq, Show)
 
 instance XP.XmlPickler DigestMethod where
-  xpickle = XP.xpElemQN (nsName "DigestMethod") $
+  xpickle = xpElem "DigestMethod" $
     [XP.biCase|(a, d) <-> DigestMethod a d|]
     XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
       XP.>*< XP.xpList XP.xpTree)
@@ -174,54 +179,54 @@ xpKeyInfoType = [XP.biCase|(i, l) <-> KeyInfo i l|]
     XP.>*< xpList1 XP.xpickle)
 
 instance XP.XmlPickler KeyInfo where
-  xpickle = XP.xpElemQN (nsName "KeyInfo") xpKeyInfoType
+  xpickle = xpElem "KeyInfo" xpKeyInfoType
 
 data KeyInfoElement
-  = KeyInfoKeyName XString -- ^§4.4.1
+  = KeyName XString -- ^§4.4.1
   | KeyInfoKeyValue KeyValue
-  | KeyInfoRetrievalMethod
+  | RetrievalMethod
     { retrievalMethodURI :: URI
     , retrievalMethodType :: Maybe URI
     , retrievalMethodTransforms :: Maybe Transforms
     } -- ^§4.4.3
-  | KeyInfoX509Data
+  | X509Data
     { x509Data :: List1 X509Element
     } -- ^§4.4.4
-  | KeyInfoPGPData
+  | PGPData
     { pgpKeyID :: Maybe XS.Base64Binary
     , pgpKeyPacket :: Maybe XS.Base64Binary
     , pgpData :: Nodes
     } -- ^§4.4.5
-  | KeyInfoSPKIData 
+  | SPKIData 
     { spkiData :: List1 SPKIElement
     } -- ^§4.4.6
-  | KeyInfoMgmtData XString -- ^§4.4.7
+  | MgmtData XString -- ^§4.4.7
   | KeyInfoElement Node
   deriving (Eq, Show)
 
 instance XP.XmlPickler KeyInfoElement where
   xpickle = [XP.biCase|
-      Left (Left (Left (Left (Left (Left (Left n)))))) <-> KeyInfoKeyName n
+      Left (Left (Left (Left (Left (Left (Left n)))))) <-> KeyName n
       Left (Left (Left (Left (Left (Left (Right v)))))) <-> KeyInfoKeyValue v
-      Left (Left (Left (Left (Left (Right ((u, t), f)))))) <-> KeyInfoRetrievalMethod u t f
-      Left (Left (Left (Left (Right l)))) <-> KeyInfoX509Data l
-      Left (Left (Left (Right ((i, p), x)))) <-> KeyInfoPGPData i p x
-      Left (Left (Right l)) <-> KeyInfoSPKIData l
-      Left (Right m) <-> KeyInfoMgmtData m
+      Left (Left (Left (Left (Left (Right ((u, t), f)))))) <-> RetrievalMethod u t f
+      Left (Left (Left (Left (Right l)))) <-> X509Data l
+      Left (Left (Left (Right ((i, p), x)))) <-> PGPData i p x
+      Left (Left (Right l)) <-> SPKIData l
+      Left (Right m) <-> MgmtData m
       Right x <-> KeyInfoElement x|]
-    XP.>$<  (XP.xpElemQN (nsName "KeyName") XS.xpString
+    XP.>$<  (xpElem "KeyName" XS.xpString
       XP.>|< XP.xpickle
-      XP.>|< XP.xpElemQN (nsName "RetrievalMethod")
+      XP.>|< xpElem "RetrievalMethod"
               (XP.xpAttr "URI" XP.xpickle
         XP.>*< XP.xpOption (XP.xpAttr "Type" XP.xpickle)
         XP.>*< XP.xpOption XP.xpickle)
-      XP.>|< XP.xpElemQN (nsName "X509Data") (xpList1 XP.xpickle)
-      XP.>|< XP.xpElemQN (nsName "PGPData")
-              (XP.xpOption (XP.xpElemQN (nsName "PGPKeyID") XS.xpBase64Binary)
-        XP.>*< XP.xpOption (XP.xpElemQN (nsName "PGPKeyPacket") XS.xpBase64Binary)
+      XP.>|< xpElem "X509Data" (xpList1 XP.xpickle)
+      XP.>|< xpElem "PGPData"
+              (XP.xpOption (xpElem "PGPKeyID" XS.xpBase64Binary)
+        XP.>*< XP.xpOption (xpElem "PGPKeyPacket" XS.xpBase64Binary)
         XP.>*< XP.xpTrees)
-      XP.>|< XP.xpElemQN (nsName "SPKIData") (xpList1 XP.xpickle)
-      XP.>|< XP.xpElemQN (nsName "MgmtData") XS.xpString
+      XP.>|< xpElem "SPKIData" (xpList1 XP.xpickle)
+      XP.>|< xpElem "MgmtData" XS.xpString
       XP.>|< XP.xpTree) -- elem only
 
 -- |§4.4.2
@@ -241,24 +246,24 @@ data KeyValue
   deriving (Eq, Show)
 
 instance XP.XmlPickler KeyValue where
-  xpickle = XP.xpElemQN (nsName "KeyValue") $
+  xpickle = xpElem "KeyValue" $
     [XP.biCase|
       Left (Left ((((pq, g), y), j), sp)) <-> DSAKeyValue pq g y j sp
       Left (Right (m, e)) <-> RSAKeyValue m e
       Right x <-> KeyValue x|]
-    XP.>$< (XP.xpElemQN (nsName "DSAKeyValue") 
+    XP.>$< (xpElem "DSAKeyValue" 
               (XP.xpOption
-                (XP.xpElemQN (nsName "P") xpCryptoBinary
-          XP.>*< XP.xpElemQN (nsName "Q") xpCryptoBinary)
-        XP.>*< XP.xpOption (XP.xpElemQN (nsName "G") xpCryptoBinary)
-        XP.>*< XP.xpElemQN (nsName "Y") xpCryptoBinary
-        XP.>*< XP.xpOption (XP.xpElemQN (nsName "J") xpCryptoBinary)
+                (xpElem "P" xpCryptoBinary
+          XP.>*< xpElem "Q" xpCryptoBinary)
+        XP.>*< XP.xpOption (xpElem "G" xpCryptoBinary)
+        XP.>*< xpElem "Y" xpCryptoBinary
+        XP.>*< XP.xpOption (xpElem "J" xpCryptoBinary)
         XP.>*< (XP.xpOption
-                (XP.xpElemQN (nsName "Seed") xpCryptoBinary
-          XP.>*< XP.xpElemQN (nsName "PgenCounter") xpCryptoBinary)))
-      XP.>|< XP.xpElemQN (nsName "RSAKeyValue") 
-              (XP.xpElemQN (nsName "Modulus") xpCryptoBinary
-        XP.>*< XP.xpElemQN (nsName "Exponent") xpCryptoBinary)
+                (xpElem "Seed" xpCryptoBinary
+          XP.>*< xpElem "PgenCounter" xpCryptoBinary)))
+      XP.>|< xpElem "RSAKeyValue" 
+              (xpElem "Modulus" xpCryptoBinary
+        XP.>*< xpElem "Exponent" xpCryptoBinary)
       XP.>|< XP.xpTree) -- elem only
 
 -- |§4.4.4.1
@@ -287,13 +292,13 @@ instance XP.XmlPickler X509Element where
       Left (Left (Right b)) <-> X509Certificate b
       Left (Right b) <-> X509CRL b
       Right x <-> X509Element x|]
-    XP.>$< (XP.xpElemQN (nsName "X509IssuerSerial")
-              (XP.xpElemQN (nsName "X509IssuerName") xpX509DistinguishedName
-        XP.>*< XP.xpElemQN (nsName "X509SerialNumber") XP.xpickle)
-      XP.>|< XP.xpElemQN (nsName "X509SubjectName") xpX509DistinguishedName
-      XP.>|< XP.xpElemQN (nsName "X509SKI") XS.xpBase64Binary
-      XP.>|< XP.xpElemQN (nsName "X509Certificate") XS.xpBase64Binary
-      XP.>|< XP.xpElemQN (nsName "X509CRL") XS.xpBase64Binary
+    XP.>$< (xpElem "X509IssuerSerial"
+              (xpElem "X509IssuerName" xpX509DistinguishedName
+        XP.>*< xpElem "X509SerialNumber" XP.xpickle)
+      XP.>|< xpElem "X509SubjectName" xpX509DistinguishedName
+      XP.>|< xpElem "X509SKI" XS.xpBase64Binary
+      XP.>|< xpElem "X509Certificate" XS.xpBase64Binary
+      XP.>|< xpElem "X509CRL" XS.xpBase64Binary
       XP.>|< XP.xpTree) -- elem only
 
 -- |§4.4.6
@@ -306,7 +311,7 @@ instance XP.XmlPickler SPKIElement where
   xpickle = [XP.biCase|
       Left b <-> SPKISexp b
       Right x <-> SPKIElement x|]
-    XP.>$<  (XP.xpElemQN (nsName "SPKISexp") XS.xpBase64Binary
+    XP.>$<  (xpElem "SPKISexp" XS.xpBase64Binary
       XP.>|< XP.xpTree) -- elem only
 
 -- |§4.5
@@ -318,7 +323,7 @@ data Object = Object
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Object where
-  xpickle = XP.xpElemQN (nsName "Object") $
+  xpickle = xpElem "Object" $
     [XP.biCase|(((i, m), e), x) <-> Object i m e x|] 
     XP.>$< (XP.xpCheckEmptyAttributes (XP.xpOption (XP.xpAttr "Id" XS.xpID)
       XP.>*< XP.xpOption (XP.xpAttr "MimeType" XS.xpString)
@@ -350,7 +355,7 @@ data Manifest = Manifest
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Manifest where
-  xpickle = XP.xpElemQN (nsName "Manifest") $
+  xpickle = xpElem "Manifest" $
     [XP.biCase|(i, r) <-> Manifest i r|] 
     XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
       XP.>*< xpList1 XP.xpickle)
@@ -362,7 +367,7 @@ data SignatureProperties = SignatureProperties
   } deriving (Eq, Show)
 
 instance XP.XmlPickler SignatureProperties where
-  xpickle = XP.xpElemQN (nsName "SignatureProperties") $
+  xpickle = xpElem "SignatureProperties" $
     [XP.biCase|(i, p) <-> SignatureProperties i p|] 
     XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
       XP.>*< xpList1 XP.xpickle)
@@ -374,7 +379,7 @@ data SignatureProperty = SignatureProperty
   } deriving (Eq, Show)
 
 instance XP.XmlPickler SignatureProperty where
-  xpickle = XP.xpElemQN (nsName "SignatureProperty") $
+  xpickle = xpElem "SignatureProperty" $
     [XP.biCase|((i, t), x) <-> SignatureProperty i t x|] 
     XP.>$<  (XP.xpOption (XP.xpAttr "Id" XS.xpID)
       XP.>*< XP.xpAttr "Target" XP.xpickle

@@ -2,6 +2,7 @@ module SAML2.XML
   ( module SAML2.XML.Types
   , module SAML2.Core.Datatypes
   , URI
+  , IP, xpIP
   , Preidentified(..)
   , xpPreidentified
   , PreidentifiedURI
@@ -13,6 +14,12 @@ import Network.URI (URI)
 import SAML2.XML.Types
 import SAML2.Core.Datatypes
 import qualified SAML2.XML.Pickle as XP
+import qualified SAML2.XML.Schema as XS
+
+type IP = XS.String
+
+xpIP :: XP.PU IP
+xpIP = XS.xpString
 
 data Preidentified b a
   = Preidentified !a

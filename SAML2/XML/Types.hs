@@ -29,8 +29,6 @@ mkNamespace p u = Namespace p $ uriToString id u ""
 mkNName :: Namespace -> String -> QName
 mkNName ns n = HXT.mkQName (namespacePrefix ns) n (namespaceURI ns)
 
-type IP = String
-
 httpURI :: String -> String -> String -> String -> URI
 httpURI host = URI "http:" $ Just $ URIAuth "" host ""
 

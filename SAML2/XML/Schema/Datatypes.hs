@@ -54,7 +54,7 @@ instance XP.XmlPickler AnyURI where
   xpickle = XP.xpWrapEither 
     ( maybe (Left "anyURI expects URI") Right . URI.parseURIReference
     , \u -> URI.uriToString id u "")
-    $ XP.xpTextDT (XPS.scDTxsd XSD.xsd_anyURI [])
+    $ XP.xpText0DT (XPS.scDTxsd XSD.xsd_anyURI [])
 
 -- |§3.3.8
 type ID = String
@@ -68,3 +68,9 @@ xpNCName = XP.xpWrapEither
 
 xpID :: XP.PU ID
 xpID = xpNCName{ XP.theSchema = XPS.scDTxsd XSD.xsd_ID [] }
+
+-- |§3.3.20
+type NonNegativeInteger = Word
+
+xpNonNegativeInteger :: XP.PU NonNegativeInteger
+xpNonNegativeInteger = XP.xpPrim{ XP.theSchema = XPS.scDTxsd XSD.xsd_nonNegativeInteger [] }

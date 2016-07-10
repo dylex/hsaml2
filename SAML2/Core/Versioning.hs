@@ -1,8 +1,14 @@
-module SAML2.Version
+-- |
+-- SAML Versioning
+--
+-- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §4
+module SAML2.Core.Versioning
   ( SAMLVersion(..)
   ) where
 
 import Data.Version (Version, makeVersion)
+
+import qualified SAML2.XML.Pickle as XP
 
 data SAMLVersion
   = SAML10
@@ -24,3 +30,6 @@ instance Read SAMLVersion where
   readsPrec _ ('1':'.':'1':s) = [(SAML11, s)]
   readsPrec _ ('2':'.':'0':s) = [(SAML20, s)]
   readsPrec _ _ = []
+
+instance XP.XmlPickler SAMLVersion where
+  xpickle = XP.xpPrim    

@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 -- |
 -- SAML-Defined Identifiers
 --
@@ -8,6 +9,7 @@ module SAML2.Core.Identifiers where
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import SAML2.Core.Namespaces
+import SAML2.Core.Versioning
 
 -- |§8.1
 data ActionNamespace

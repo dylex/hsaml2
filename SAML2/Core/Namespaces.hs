@@ -4,15 +4,14 @@
 --
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §1.2
 module SAML2.Core.Namespaces 
-  ( SAMLVersion(..)
-  , samlURN
+  ( samlURN
   , xpSAMLURN
   ) where
 
 import Data.Monoid ((<>))
 import Network.URI (URI(..))
 
-import SAML2.Version
+import SAML2.Core.Versioning
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import SAML2.Core.Datatypes ()
