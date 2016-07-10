@@ -15,7 +15,7 @@ import Network.URI (URI(..))
 import SAML2.Core.Versioning
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
-import SAML2.Core.Datatypes ()
+import qualified SAML2.XML.Schema as XS
 
 samlURN :: SAMLVersion -> [String] -> URI
 samlURN v l = URI
@@ -27,7 +27,7 @@ samlURN v l = URI
   }
 
 xpEnumSAMLURN :: (Enum a, Bounded a) => String -> (a -> (SAMLVersion, String)) -> XP.PU a
-xpEnumSAMLURN t g = xpEnum XP.xpickle t (\a -> let (v, n) = g a in samlURN v [t, n])
+xpEnumSAMLURN t g = xpEnum XS.xpAnyURI t (\a -> let (v, n) = g a in samlURN v [t, n])
 
 xpPreidentifiedSAMLURN :: (Enum a, Bounded a) => String -> (a -> (SAMLVersion, String)) -> XP.PU (PreidentifiedURI a)
 xpPreidentifiedSAMLURN t g = xpPreidentifiedURI (\a -> let (v, n) = g a in samlURN v [t, n])

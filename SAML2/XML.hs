@@ -47,4 +47,4 @@ xpPreidentified b g = XP.xpWrap
   f (Unidentified u) = u
 
 xpPreidentifiedURI :: (Bounded a, Enum a) => (a -> URI) -> XP.PU (PreidentifiedURI a)
-xpPreidentifiedURI = xpPreidentified XP.xpickle
+xpPreidentifiedURI = xpPreidentified XS.xpAnyURI

@@ -49,6 +49,7 @@ data NameIDFormat
   | NameIDFormatEntity -- ^§8.3.6: SAML endpoint (BaseId and SPProvidedID must be Nothing)
   | NameIDFormatPersistent -- ^§8.3.7: String <= 256 char (NameQualifier same as idp ident/Nothing, SPNameQualifier same as sp ident/Nothing, SPProvidedID alt ident from sp)
   | NameIDFormatTransient -- ^§8.3.8: String <= 256 char
+  | NameIDFormatEncrypted -- ^§3.4.1.1: only for NameIDPolicy
   deriving (Eq, Enum, Bounded, Show)
   
 instance XP.XmlPickler (PreidentifiedURI NameIDFormat) where
@@ -61,6 +62,7 @@ instance XP.XmlPickler (PreidentifiedURI NameIDFormat) where
     f NameIDFormatEntity      = (SAML20, "entity")
     f NameIDFormatPersistent  = (SAML20, "persistent")
     f NameIDFormatTransient   = (SAML20, "transient")
+    f NameIDFormatEncrypted   = (SAML20, "encrypted")
 
 -- |§8.4
 data Consent

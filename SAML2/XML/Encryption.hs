@@ -40,7 +40,7 @@ data EncryptedType = EncryptedType
 instance XP.XmlPickler EncryptedType where
   xpickle = [XP.biCase|(((((((i, t), m), e), c), k), d), p) <-> EncryptedType i t m e c k d p|]
     XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
-      XP.>*< XP.xpAttrImplied "Type" XP.xpickle
+      XP.>*< XP.xpAttrImplied "Type" XS.xpAnyURI
       XP.>*< XP.xpAttrImplied "MimeType" XS.xpString
       XP.>*< XP.xpAttrImplied "Encoding" XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
@@ -82,7 +82,7 @@ instance XP.XmlPickler CipherData where
       Right (u, t) <-> CipherReference u t |]
     XP.>$<  (xpElem "CipherValue" XS.xpBase64Binary
       XP.>|< xpElem "CipherReference"
-              (XP.xpAttr "URI" XP.xpickle
+              (XP.xpAttr "URI" XS.xpAnyURI
         XP.>*< xpElem "Transforms" (xpList1 XP.xpickle)))
 
 -- |§3.4
@@ -96,7 +96,7 @@ instance XP.XmlPickler EncryptedData where
 
 -- |§3.5.1
 data EncryptedKey = EncryptedKey
-  { encryptedKey :: EncryptedType
+  { encryptedKey :: !EncryptedType
   , encryptedKeyRecipient :: Maybe XString
   , encryptedKeyReferenceList :: [Reference] -- ^empty for missing
   , encryptedKeyCarriedKeyName :: Maybe XString
@@ -132,7 +132,7 @@ instance XP.XmlPickler Reference where
     XP.>$< (refs "DataReference" XP.>|< refs "KeyReference")
     where
     refs n = xpElem n
-      $ XP.xpCheckEmptyAttributes (XP.xpAttr "URI" XP.xpickle)
+      $ XP.xpCheckEmptyAttributes (XP.xpAttr "URI" XS.xpAnyURI)
       XP.>*< XP.xpTrees
 
 -- |§3.7
@@ -157,7 +157,7 @@ instance XP.XmlPickler EncryptionProperty where
   xpickle = xpElem "EncryptionProperty" $
     [XP.biCase|((i, t), x) <-> EncryptionProperty i t x|] 
     XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
-      XP.>*< XP.xpAttrImplied "Target" XP.xpickle
+      XP.>*< XP.xpAttrImplied "Target" XS.xpAnyURI
       XP.>*< XP.xpTrees) -- really only should allow xml: attributes
 
 -- |§5.1

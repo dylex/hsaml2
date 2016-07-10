@@ -117,8 +117,8 @@ instance XP.XmlPickler Reference where
   xpickle = xpElem "Reference" $
     [XP.biCase|(((((i, u), t), f), m), v) <-> Reference i u t f m v|] 
     XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
-      XP.>*< XP.xpAttrImplied "URI" XP.xpickle
-      XP.>*< XP.xpAttrImplied "Type" XP.xpickle
+      XP.>*< XP.xpAttrImplied "URI" XS.xpAnyURI
+      XP.>*< XP.xpAttrImplied "Type" XS.xpAnyURI
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpElem "DigestValue" XS.xpBase64Binary)
@@ -217,8 +217,8 @@ instance XP.XmlPickler KeyInfoElement where
     XP.>$<  (xpElem "KeyName" XS.xpString
       XP.>|< XP.xpickle
       XP.>|< xpElem "RetrievalMethod"
-              (XP.xpAttr "URI" XP.xpickle
-        XP.>*< XP.xpAttrImplied "Type" XP.xpickle
+              (XP.xpAttr "URI" XS.xpAnyURI
+        XP.>*< XP.xpAttrImplied "Type" XS.xpAnyURI
         XP.>*< XP.xpOption XP.xpickle)
       XP.>|< xpElem "X509Data" (xpList1 XP.xpickle)
       XP.>|< xpElem "PGPData"
@@ -382,7 +382,7 @@ instance XP.XmlPickler SignatureProperty where
   xpickle = xpElem "SignatureProperty" $
     [XP.biCase|((i, t), x) <-> SignatureProperty i t x|] 
     XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
-      XP.>*< XP.xpAttr "Target" XP.xpickle
+      XP.>*< XP.xpAttr "Target" XS.xpAnyURI
       XP.>*< xpList1 XP.xpTree)
 
 -- |§6.1

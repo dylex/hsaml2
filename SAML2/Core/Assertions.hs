@@ -56,6 +56,11 @@ instance XP.XmlPickler NameID where
       XP.>*< XP.xpAttrImplied "SPProvidedID" XS.xpString
       XP.>*< xpBaseID XS.xpString)
 
+type EncryptedNameID = EncryptedElement NameID
+
+instance XP.XmlPickler EncryptedNameID where
+  xpickle = xpElem "EncryptedID" xpEncryptedElement
+
 data Identifier
   = IdentifierName NameID
   | IdentifierBase (BaseID Nodes)
@@ -95,18 +100,18 @@ xpPossiblyEncrypted = [XP.biCase|
   XP.>$< (XP.xpickle XP.>|< XP.xpickle)
 
 data AssertionRef
-  = AssertionIDRef ID -- ^§2.3.1
+  = AssertionRefID AssertionIDRef
   | AssertionURIRef AnyURI -- ^§2.3.2
   | AssertionRef (PossiblyEncrypted Assertion)
   deriving (Eq, Show)
 
 instance XP.XmlPickler AssertionRef where
   xpickle = [XP.biCase|
-      Left (Left i) <-> AssertionIDRef i
+      Left (Left i) <-> AssertionRefID i
       Left (Right u) <-> AssertionURIRef u
       Right a <-> AssertionRef a|]
-    XP.>$<  (xpElem "AssertionIDRef" XS.xpID
-      XP.>|< xpElem "AssertionURIRef" XP.xpickle
+    XP.>$<  (XP.xpickle
+      XP.>|< xpElem "AssertionURIRef" XS.xpAnyURI
       XP.>|< xpPossiblyEncrypted)
 
 -- |§2.2.5
@@ -117,6 +122,15 @@ instance XP.XmlPickler Issuer where
   xpickle = xpElem "Issuer" $ [XP.biCase|
       n <-> Issuer n|]
     XP.>$< XP.xpickle
+
+-- |§2.3.1
+newtype AssertionIDRef = AssertionIDRef ID
+  deriving (Eq, Show)
+
+instance XP.XmlPickler AssertionIDRef where
+  xpickle = xpElem "AssertionIDRef" $ [XP.biCase|
+      i <-> AssertionIDRef i|]
+    XP.>$< XS.xpID
 
 -- |§2.3.3
 data Assertion = Assertion
@@ -135,11 +149,10 @@ instance XP.XmlPickler Assertion where
   xpickle = xpElem "Assertion" $
     [XP.biCase|
       ((((((((v, i), t), n), s), Nothing), c), a), l) <-> Assertion v i t n s (Subject Nothing []) c a l
-      ((((((((v, i), t), n), s), Just r), c), a), l) <-> Assertion v i t n s r c a l
-    |] 
+      ((((((((v, i), t), n), s), Just r), c), a), l) <-> Assertion v i t n s r c a l|] 
     XP.>$<  (XP.xpAttr "Version" XP.xpickle
       XP.>*< XP.xpAttr "ID" XS.xpID
-      XP.>*< XP.xpAttr "IssueInstant" XP.xpickle
+      XP.>*< XP.xpAttr "IssueInstant" XS.xpDateTime
       XP.>*< XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
@@ -214,9 +227,9 @@ data SubjectConfirmationData = SubjectConfirmationData
 instance XP.XmlPickler SubjectConfirmationData where
   xpickle = xpElem "SubjectConfirmationData" $ [XP.biCase|
       ((((((s, e), r), i), a), k), x) <-> SubjectConfirmationData s e r i a k x|]
-    XP.>$<  (XP.xpAttrImplied "NotBefore" XP.xpickle
-      XP.>*< XP.xpAttrImplied "NotOnOrAfter" XP.xpickle
-      XP.>*< XP.xpAttrImplied "Recipient" XP.xpickle
+    XP.>$<  (XP.xpAttrImplied "NotBefore" XS.xpDateTime
+      XP.>*< XP.xpAttrImplied "NotOnOrAfter" XS.xpDateTime
+      XP.>*< XP.xpAttrImplied "Recipient" XS.xpAnyURI
       XP.>*< XP.xpAttrImplied "InResponseTo" XS.xpNCName
       XP.>*< XP.xpAttrImplied "Address" xpIP
       XP.>*< XP.xpList XP.xpickle
@@ -232,8 +245,8 @@ data Conditions = Conditions
 instance XP.XmlPickler Conditions where
   xpickle = xpElem "Conditions" $ [XP.biCase|
       ((s, e), c) <-> Conditions s e c|]
-    XP.>$<  (XP.xpAttrImplied "NotBefore" XP.xpickle
-      XP.>*< XP.xpAttrImplied "NotOnOrAfter" XP.xpickle
+    XP.>$<  (XP.xpAttrImplied "NotBefore" XS.xpDateTime
+      XP.>*< XP.xpAttrImplied "NotOnOrAfter" XS.xpDateTime
       XP.>*< XP.xpList XP.xpickle)
 
 data Condition
@@ -266,7 +279,7 @@ newtype Audience = Audience AnyURI
 instance XP.XmlPickler Audience where
   xpickle = xpElem "Audience" $ [XP.biCase|
       u <-> Audience u|]
-    XP.>$< XP.xpickle
+    XP.>$< XS.xpAnyURI
 
 -- |§2.6.1
 type Advice = [AdviceElement]
@@ -313,9 +326,9 @@ data AuthnStatement = AuthnStatement
 instance XP.XmlPickler AuthnStatement where
   xpickle = xpElem "AuthnStatement" $ [XP.biCase|
       ((((t, i), e), l), c) <-> AuthnStatement t i e l c|]
-    XP.>$<  (XP.xpAttr "AuthnInstant" XP.xpickle
+    XP.>$<  (XP.xpAttr "AuthnInstant" XS.xpDateTime
       XP.>*< XP.xpAttrImplied "SessionIndex" XS.xpString
-      XP.>*< XP.xpAttrImplied "SessionNotOnOrAfter" XP.xpickle
+      XP.>*< XP.xpAttrImplied "SessionNotOnOrAfter" XS.xpDateTime
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpickle)
 
@@ -341,9 +354,9 @@ data AuthnContext = AuthnContext
 instance XP.XmlPickler AuthnContext where
   xpickle = xpElem "AuthnContext" $ [XP.biCase|
       ((c, d), a) <-> AuthnContext c d a|]
-    XP.>$<  (XP.xpOption (xpElem "AuthnContextClassRef" XP.xpickle)
+    XP.>$<  (XP.xpOption (xpElem "AuthnContextClassRef" XS.xpAnyURI)
       XP.>*< XP.xpOption XP.xpickle
-      XP.>*< XP.xpList (xpElem "AuthenticatingAuthority" XP.xpickle))
+      XP.>*< XP.xpList (xpElem "AuthenticatingAuthority" XS.xpAnyURI))
 
 data AuthnContextDecl
   = AuthnContextDecl Node
@@ -355,7 +368,7 @@ instance XP.XmlPickler AuthnContextDecl where
       Left d <-> AuthnContextDecl d
       Right r <-> AuthnContextDeclRef r|]
     XP.>$<  (xpElem "AuthnContextDecl" XP.xpTree
-      XP.>|< xpElem "AuthnContextDeclRef" XP.xpickle)
+      XP.>|< xpElem "AuthnContextDeclRef" XS.xpAnyURI)
 
 -- |§2.7.3
 newtype AttributeStatement = AttributeStatement (List1 (PossiblyEncrypted Attribute))
@@ -395,17 +408,16 @@ data AuthzDecisionStatement = AuthzDecisionStatement
   { authzDecisionStatementResource :: AnyURI
   , authzDecisionStatementDecision :: DecisionType
   , authzDecisionStatementAction :: List1 Action
-  , authzDecisionStatementEvidence :: [AssertionRef] -- ^§2.7.4.3
+  , authzDecisionStatementEvidence :: Evidence
   } deriving (Eq, Show)
 
 instance XP.XmlPickler AuthzDecisionStatement where
   xpickle = xpElem "AuthzDecisionStatement" $ [XP.biCase|
-      (((r, d), a), Nothing) <-> AuthzDecisionStatement r d a []
-      (((r, d), a), Just e) <-> AuthzDecisionStatement r d a e|]
-    XP.>$<  (XP.xpAttr "Resource" XP.xpickle
+      (((r, d), a), e) <-> AuthzDecisionStatement r d a e|]
+    XP.>$<  (XP.xpAttr "Resource" XS.xpAnyURI
       XP.>*< XP.xpAttr "Decision" XP.xpickle
       XP.>*< xpList1 XP.xpickle
-      XP.>*< XP.xpOption (xpElem "Evidence" (XP.xpList1 XP.xpickle)))
+      XP.>*< XP.xpickle)
 
 -- |§2.7.4.1
 data DecisionType
@@ -431,3 +443,13 @@ instance XP.XmlPickler Action where
       (n, a) <-> Action n a|]
     XP.>$<  (XP.xpDefault (Preidentified ActionNamespaceRWEDCNegation) (XP.xpAttr "Namespace" XP.xpickle)
       XP.>*< XP.xpText0)
+
+-- |§2.7.4.3
+newtype Evidence = Evidence [AssertionRef]
+  deriving (Eq, Show)
+
+instance XP.XmlPickler Evidence where
+  xpickle = [XP.biCase|
+      Nothing <-> Evidence []
+      Just l <-> Evidence l|]
+    XP.>$< XP.xpOption (xpElem "Evidence" $ XP.xpList1 XP.xpickle)
