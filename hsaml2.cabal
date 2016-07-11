@@ -37,6 +37,8 @@ library
     SAML2.Core.Identifiers
     SAML2.Profiles
     SAML2.Profiles.ConfirmationMethod
+    SAML2.Bindings
+    SAML2.Bindings.Identifiers
   other-modules:
     SAML2.XML.Pickle
   build-depends:       
