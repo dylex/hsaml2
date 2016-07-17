@@ -12,6 +12,7 @@ import Crypto.Number.Serialize (i2osp, os2ip)
 import SAML2.XML
 import qualified SAML2.XML.Schema as XS
 import qualified SAML2.XML.Pickle as XP
+import qualified SAML2.XML.Canonical as C14N
 
 nsFrag :: String -> URI
 nsFrag = httpURI "www.w3.org" "/2000/09/xmldsig" "" . ('#':)
@@ -79,7 +80,7 @@ instance XP.XmlPickler SignedInfo where
 
 -- |§4.3.1
 data CanonicalizationMethod = CanonicalizationMethod 
-  { canonicalizationMethodAlgorithm :: PreidentifiedURI CanonicalizationAlgorithm
+  { canonicalizationMethodAlgorithm :: PreidentifiedURI C14N.CanonicalizationAlgorithm
   , canonicalizationMethod :: Nodes
   } deriving (Eq, Show)
 
@@ -429,26 +430,9 @@ instance XP.XmlPickler (PreidentifiedURI SignatureAlgorithm) where
     f SignatureDSA_SHA1 = nsFrag "dsa-sha1"
     f SignatureRSA_SHA1 = nsFrag "rsa-sha1"
 
--- |§6.5
-data CanonicalizationAlgorithm
-  = CanonicalXML10 -- ^§6.5.1
-  | CanonicalXML10Comments -- ^§6.5.1
-  | CanonicalXML11 -- ^§6.5.2
-  | CanonicalXML11Comments -- ^§6.5.2
-  deriving (Eq, Bounded, Enum, Show)
-
-canonicalizationAlgorithmURI :: CanonicalizationAlgorithm -> URI
-canonicalizationAlgorithmURI CanonicalXML10         = httpURI "www.w3.org" "/TR/2001/REC-xml-c14n-20010315" "" ""
-canonicalizationAlgorithmURI CanonicalXML10Comments = httpURI "www.w3.org" "/TR/2001/REC-xml-c14n-20010315" "" "#WithComments"
-canonicalizationAlgorithmURI CanonicalXML11         = httpURI "www.w3.org" "/2006/12/xml-c14n11" "" ""
-canonicalizationAlgorithmURI CanonicalXML11Comments = httpURI "www.w3.org" "/2006/12/xml-c14n11" "" "#WithComments"
-
-instance XP.XmlPickler (PreidentifiedURI CanonicalizationAlgorithm) where
-  xpickle = xpPreidentifiedURI canonicalizationAlgorithmURI
-
 -- |§6.6
 data TransformAlgorithm
-  = TransformCanonicalization CanonicalizationAlgorithm -- ^§6.6.1
+  = TransformCanonicalization C14N.CanonicalizationAlgorithm -- ^§6.6.1
   | TransformBase64 -- ^§6.6.2
   | TransformXPath -- ^§6.6.3
   | TransformEnvelopedSignature -- ^§6.6.4
@@ -473,7 +457,7 @@ instance Enum TransformAlgorithm where
 
 instance XP.XmlPickler (PreidentifiedURI TransformAlgorithm) where
   xpickle = xpPreidentifiedURI f where
-    f (TransformCanonicalization c) = canonicalizationAlgorithmURI c
+    f (TransformCanonicalization c) = C14N.canonicalizationAlgorithmURI c
     f TransformBase64 = nsFrag "base64"
     f TransformXPath = httpURI "www.w3.org" "/TR/1999/REC-xpath-19991116" "" ""
     f TransformEnvelopedSignature = nsFrag "enveloped-signature"

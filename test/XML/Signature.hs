@@ -8,6 +8,7 @@ import qualified Text.XML.HXT.DOM.XmlNode as HXT
 
 import SAML2.XML
 import SAML2.XML.Signature
+import SAML2.XML.Canonical
 
 import XML
 
@@ -17,7 +18,7 @@ tests = U.test
     Signature (Just "MyFirstSignature")
       (SignedInfo Nothing
         (CanonicalizationMethod
-          (Preidentified CanonicalXML10)
+          (Preidentified (CanonicalXML10 False))
           [])
         (SignatureMethod
           (Preidentified SignatureDSA_SHA1)
@@ -74,7 +75,7 @@ tests = U.test
     Signature Nothing
       (SignedInfo Nothing
         (CanonicalizationMethod 
-          (Preidentified CanonicalXML10)
+          (Preidentified (CanonicalXML10 False))
           [])
         (SignatureMethod 
           (Preidentified SignatureRSA_SHA1)
@@ -110,7 +111,7 @@ tests = U.test
     Signature Nothing
       (SignedInfo Nothing
         (CanonicalizationMethod 
-          (Preidentified CanonicalXML10)
+          (Preidentified (CanonicalXML10 False))
           [])
         (SignatureMethod
           (Preidentified SignatureDSA_SHA1)

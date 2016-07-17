@@ -8,7 +8,7 @@ author:              Dylan Simon
 maintainer:          dylan@dylex.net
 copyright:           2016
 category:            Security, Network, Web
-build-type:          Simple
+build-type:          Custom
 cabal-version:       >=1.10
 tested-with:         GHC == 7.10.3
 
@@ -25,9 +25,11 @@ library
     SAML2.XML
     SAML2.XML.Schema
     SAML2.XML.Schema.Datatypes
+    SAML2.XML.Canonical
     SAML2.XML.Signature
     SAML2.XML.Encryption
     SAML2.XML.Types
+    SAML2.XML.Lint
     SAML2.Core
     SAML2.Core.Namespaces
     SAML2.Core.Datatypes
@@ -51,9 +53,11 @@ library
     semigroups,
     invertible,
     base64-bytestring,
-    cryptonite
+    cryptonite,
+    process
   default-language:    Haskell2010
   ghc-options: -Wall
+  build-tools: xmllint
 
 test-suite tests
   type: exitcode-stdio-1.0
@@ -63,6 +67,7 @@ test-suite tests
   ghc-options: -Wall
   build-depends:
     base,
+    bytestring,
     network-uri,
     hxt,
     hxt-http,
