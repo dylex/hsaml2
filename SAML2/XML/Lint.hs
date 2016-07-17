@@ -8,6 +8,7 @@ module SAML2.XML.Lint where
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 import qualified Text.XML.HXT.Core as HXT
+import qualified Text.XML.HXT.DOM.ShowXml as HXTS
 
 xmllintString :: [String] -> HXT.IOStateArrow s String String
 xmllintString args =
@@ -21,8 +22,19 @@ xmllintString args =
 
 xmllintToString :: [String] -> HXT.IOStateArrow s HXT.XmlTree String
 xmllintToString args =
-  HXT.writeDocumentToString []
+  HXT.getChildren
+  HXT.>. HXTS.xshow'' cq aq
   HXT.>>> xmllintString args
+  where
+  cq '&'   = ("&amp;"  ++)
+  cq '<'   = ("&lt;"   ++)
+  cq '>'   = ("&gt;"   ++)
+  cq '\13' = ("&#xD;"  ++)
+  cq c = (c:)
+  aq '"'   = ("&quot;" ++)
+  aq '\9'  = ("&#x9;"  ++)
+  aq '\10' = ("&#xA;"  ++)
+  aq c = cq c
 
 xmllint :: [String] -> HXT.IOStateArrow s HXT.XmlTree HXT.XmlTree
 xmllint args =
