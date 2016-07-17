@@ -54,7 +54,8 @@ library
     invertible,
     base64-bytestring,
     cryptonite,
-    process
+    process,
+    lens
   default-language:    Haskell2010
   ghc-options: -Wall
   build-tools: xmllint
