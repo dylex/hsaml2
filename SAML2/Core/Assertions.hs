@@ -21,7 +21,7 @@ import SAML2.Core.Identifiers
 import SAML2.Profiles.ConfirmationMethod
 
 ns :: Namespace
-ns = mkNamespace "saml" $ samlURN SAML20 ["assertion"]
+ns = mkNamespace "" $ samlURN SAML20 ["assertion"]
 
 nsName :: XString -> QName
 nsName = mkNName ns
@@ -48,6 +48,9 @@ data NameID = NameID
   , nameIDFormat :: PreidentifiedURI NameIDFormat
   , nameSPProvidedID :: Maybe XString
   } deriving (Eq, Show)
+
+simpleNameID :: NameIDFormat -> XString -> NameID
+simpleNameID f s = NameID (BaseID Nothing Nothing s) (Preidentified f) Nothing
 
 instance XP.XmlPickler NameID where
   xpickle = xpElem "NameID" $
