@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Protocol Bindings identifiers
 --
@@ -7,7 +8,6 @@
 module SAML2.Bindings.Identifiers where
 
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
 import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 
@@ -20,8 +20,8 @@ data Binding
   | BindingURI -- ^§3.7
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler (PreidentifiedURI Binding) where
-  xpickle = xpPreidentifiedSAMLURN "bindings" f where
+instance Identifiable URI Binding where
+  identifier = samlURNIdentifier "bindings" . f where
     f BindingSOAP         = (SAML20, "SOAP")
     f BindingPAOS         = (SAML20, "PAOS")
     f BindingHTTPRedirect = (SAML20, "HTTP-Redirect")

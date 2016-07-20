@@ -1,15 +1,22 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE TypeOperators #-}
 module SAML2.XML
   ( module SAML2.XML.Types
   , module SAML2.Core.Datatypes
   , URI
   , IP, xpIP
-  , xpEnum
-  , Preidentified(..)
-  , xpPreidentified
-  , PreidentifiedURI
-  , xpPreidentifiedURI
+  , Identified(..)
+  , Identifiable(..)
+  , unidentify
+  , xpIdentified
+  , xpIdentifier
+  , IdentifiedURI
   ) where
 
+import qualified Data.Invertible as Inv
 import Network.URI (URI)
 
 import SAML2.XML.Types
@@ -22,29 +29,39 @@ type IP = XS.String
 xpIP :: XP.PU IP
 xpIP = XS.xpString
 
-xpEnum :: (Eq b, Bounded a, Enum a) => XP.PU b -> String -> (a -> b) -> XP.PU a
-xpEnum b t g = XP.xpWrapEither
-  ( \u -> maybe (Left ("invalid " ++ t)) Right $ lookup u l
-  , g
-  ) b
-  where l = [ (g a, a) | a <- [minBound..maxBound] ]
-
-data Preidentified b a
-  = Preidentified !a
+data Identified b a
+  = Identified !a
   | Unidentified !b
   deriving (Eq, Show)
 
-type PreidentifiedURI = Preidentified URI
+class Eq b => Identifiable b a | a -> b where
+  identifier :: a -> b
+  identifiedValues :: [a]
+  default identifiedValues :: (Bounded a, Enum a) => [a]
+  identifiedValues = [minBound..maxBound]
+  reidentify :: b -> Identified b a
+  reidentify u = maybe (Unidentified u) Identified $ lookup u l where
+    l = [ (identifier a, a) | a <- identifiedValues ]
 
-xpPreidentified :: (Eq b, Bounded a, Enum a) => XP.PU b -> (a -> b) -> XP.PU (Preidentified b a)
-xpPreidentified b g = XP.xpWrap
-  ( \u -> maybe (Unidentified u) Preidentified $ lookup u l
-  , f
+unidentify :: Identifiable b a => Identified b a -> b
+unidentify (Identified a) = identifier a
+unidentify (Unidentified b) = b
+
+identify :: Identifiable b a => b Inv.<-> Identified b a
+identify = reidentify Inv.:<->: unidentify
+
+xpIdentified :: Identifiable b a => XP.PU b -> XP.PU (Identified b a)
+xpIdentified = Inv.fmap identify
+
+xpIdentifier :: Identifiable b a => XP.PU b -> String -> XP.PU a
+xpIdentifier b t = XP.xpWrapEither
+  ( \u -> case reidentify u of
+      Identified a -> Right a
+      Unidentified _ -> Left ("invalid " ++ t)
+  , identifier
   ) b
-  where
-  l = [ (g a, a) | a <- [minBound..maxBound] ]
-  f (Preidentified a) = g a
-  f (Unidentified u) = u
 
-xpPreidentifiedURI :: (Bounded a, Enum a) => (a -> URI) -> XP.PU (PreidentifiedURI a)
-xpPreidentifiedURI = xpPreidentified XS.xpAnyURI
+type IdentifiedURI = Identified URI
+
+instance Identifiable URI a => XP.XmlPickler (Identified URI a) where
+  xpickle = xpIdentified XS.xpAnyURI

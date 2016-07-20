@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- XML Signature Syntax and Processing
 --
@@ -80,7 +81,7 @@ instance XP.XmlPickler SignedInfo where
 
 -- |§4.3.1
 data CanonicalizationMethod = CanonicalizationMethod 
-  { canonicalizationMethodAlgorithm :: PreidentifiedURI C14N.CanonicalizationAlgorithm
+  { canonicalizationMethodAlgorithm :: IdentifiedURI C14N.CanonicalizationAlgorithm
   , canonicalizationMethod :: Nodes
   } deriving (Eq, Show)
 
@@ -92,7 +93,7 @@ instance XP.XmlPickler CanonicalizationMethod where
 
 -- |§4.3.2
 data SignatureMethod = SignatureMethod
-  { signatureMethodAlgorithm :: PreidentifiedURI SignatureAlgorithm
+  { signatureMethodAlgorithm :: IdentifiedURI SignatureAlgorithm
   , signatureMethodHMACOutputLength :: Maybe Int
   , signatureMethod :: Nodes
   } deriving (Eq, Show)
@@ -134,7 +135,7 @@ instance XP.XmlPickler Transforms where
     XP.>$< xpList1 XP.xpickle
 
 data Transform = Transform
-  { transformAlgorithm :: PreidentifiedURI TransformAlgorithm
+  { transformAlgorithm :: IdentifiedURI TransformAlgorithm
   , transform :: [TransformElement]
   } deriving (Eq, Show)
 
@@ -158,7 +159,7 @@ instance XP.XmlPickler TransformElement where
 
 -- |§4.3.3.5
 data DigestMethod = DigestMethod
-  { digestAlgorithm :: PreidentifiedURI DigestAlgorithm
+  { digestAlgorithm :: IdentifiedURI DigestAlgorithm
   , digest :: [Node]
   } deriving (Eq, Show)
 
@@ -319,7 +320,7 @@ instance XP.XmlPickler SPKIElement where
 data Object = Object
   { objectId :: Maybe ID
   , objectMimeType :: Maybe XString
-  , objectEncoding :: Maybe (PreidentifiedURI EncodingAlgorithm)
+  , objectEncoding :: Maybe (IdentifiedURI EncodingAlgorithm)
   , objectXML :: [ObjectElement]
   } deriving (Eq, Show)
 
@@ -391,9 +392,8 @@ data EncodingAlgorithm
   = EncodingBase64
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler (PreidentifiedURI EncodingAlgorithm) where
-  xpickle = xpPreidentifiedURI f where
-    f EncodingBase64 = nsFrag "base64"
+instance Identifiable URI EncodingAlgorithm where
+  identifier EncodingBase64 = nsFrag "base64"
 
 -- |§6.2
 data DigestAlgorithm
@@ -403,21 +403,19 @@ data DigestAlgorithm
   | DigestRIPEMD160 -- ^xmlenc §5.7.4
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler (PreidentifiedURI DigestAlgorithm) where
-  xpickle = xpPreidentifiedURI f where
-    f DigestSHA1 = nsFrag "sha1"
-    f DigestSHA256 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha256"
-    f DigestSHA512 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha512"
-    f DigestRIPEMD160 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#ripemd160"
+instance Identifiable URI DigestAlgorithm where
+  identifier DigestSHA1 = nsFrag "sha1"
+  identifier DigestSHA256 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha256"
+  identifier DigestSHA512 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha512"
+  identifier DigestRIPEMD160 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#ripemd160"
 
 -- |§6.3
 data MACAlgorithm
   = MACHMAC_SHA1 -- ^§6.3.1
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler (PreidentifiedURI MACAlgorithm) where
-  xpickle = xpPreidentifiedURI f where
-    f MACHMAC_SHA1 = nsFrag "hmac-sha1"
+instance Identifiable URI MACAlgorithm where
+  identifier MACHMAC_SHA1 = nsFrag "hmac-sha1"
 
 -- |§6.4
 data SignatureAlgorithm
@@ -425,10 +423,9 @@ data SignatureAlgorithm
   | SignatureRSA_SHA1
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler (PreidentifiedURI SignatureAlgorithm) where
-  xpickle = xpPreidentifiedURI f where
-    f SignatureDSA_SHA1 = nsFrag "dsa-sha1"
-    f SignatureRSA_SHA1 = nsFrag "rsa-sha1"
+instance Identifiable URI SignatureAlgorithm where
+  identifier SignatureDSA_SHA1 = nsFrag "dsa-sha1"
+  identifier SignatureRSA_SHA1 = nsFrag "rsa-sha1"
 
 -- |§6.6
 data TransformAlgorithm
@@ -439,27 +436,16 @@ data TransformAlgorithm
   | TransformXSLT -- ^§6.6.5
   deriving (Eq, Show)
 
-instance Bounded TransformAlgorithm where
-  minBound = TransformBase64
-  maxBound = TransformCanonicalization maxBound
-
-instance Enum TransformAlgorithm where
-  fromEnum TransformBase64 = 0
-  fromEnum TransformXSLT = 1
-  fromEnum TransformXPath = 2
-  fromEnum TransformEnvelopedSignature = 3
-  fromEnum (TransformCanonicalization c) = 4 + fromEnum c
-  toEnum 0 = TransformBase64
-  toEnum 1 = TransformXSLT
-  toEnum 2 = TransformXPath
-  toEnum 3 = TransformEnvelopedSignature
-  toEnum c = TransformCanonicalization (toEnum (c - 4))
-
-instance XP.XmlPickler (PreidentifiedURI TransformAlgorithm) where
-  xpickle = xpPreidentifiedURI f where
-    f (TransformCanonicalization c) = C14N.canonicalizationAlgorithmURI c
-    f TransformBase64 = nsFrag "base64"
-    f TransformXPath = httpURI "www.w3.org" "/TR/1999/REC-xpath-19991116" "" ""
-    f TransformEnvelopedSignature = nsFrag "enveloped-signature"
-    f TransformXSLT = httpURI "www.w3.org" "/TR/1999/REC-xslt-19991116" "" ""
-
+instance Identifiable URI TransformAlgorithm where
+  identifier (TransformCanonicalization c) = identifier c
+  identifier TransformBase64 = nsFrag "base64"
+  identifier TransformXPath = httpURI "www.w3.org" "/TR/1999/REC-xpath-19991116" "" ""
+  identifier TransformEnvelopedSignature = nsFrag "enveloped-signature"
+  identifier TransformXSLT = httpURI "www.w3.org" "/TR/1999/REC-xslt-19991116" "" ""
+  identifiedValues =
+    map TransformCanonicalization identifiedValues ++
+    [ TransformBase64
+    , TransformXSLT
+    , TransformXPath
+    , TransformEnvelopedSignature
+    ]

@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- SAML Assertions
 --
@@ -45,17 +46,17 @@ xpBaseID idp = [XP.biCase|((n, s), i) <-> BaseID n s i|]
 -- |§2.2.3
 data NameID = NameID
   { nameBaseID :: BaseID XString
-  , nameIDFormat :: PreidentifiedURI NameIDFormat
+  , nameIDFormat :: IdentifiedURI NameIDFormat
   , nameSPProvidedID :: Maybe XString
   } deriving (Eq, Show)
 
 simpleNameID :: NameIDFormat -> XString -> NameID
-simpleNameID f s = NameID (BaseID Nothing Nothing s) (Preidentified f) Nothing
+simpleNameID f s = NameID (BaseID Nothing Nothing s) (Identified f) Nothing
 
 instance XP.XmlPickler NameID where
   xpickle = xpElem "NameID" $
     [XP.biCase|((f, p), b) <-> NameID b f p|]
-    XP.>$<  (XP.xpDefault (Preidentified NameIDFormatUnspecified) (XP.xpAttr "Format" XP.xpickle)
+    XP.>$<  (XP.xpDefault (Identified NameIDFormatUnspecified) (XP.xpAttr "Format" XP.xpickle)
       XP.>*< XP.xpAttrImplied "SPProvidedID" XS.xpString
       XP.>*< xpBaseID XS.xpString)
 
@@ -204,7 +205,7 @@ noSubject = Subject Nothing []
 
 -- |§2.4.1.1
 data SubjectConfirmation = SubjectConfirmation
-  { subjectConfirmationMethod :: PreidentifiedURI ConfirmationMethod
+  { subjectConfirmationMethod :: IdentifiedURI ConfirmationMethod
   , subjectConfirmationIdentifier :: Maybe (PossiblyEncrypted Identifier)
   , subjectConfirmationData :: Maybe SubjectConfirmationData
   } deriving (Eq, Show)
@@ -385,7 +386,7 @@ instance XP.XmlPickler AttributeStatement where
 -- |§2.7.3.1
 data Attribute = Attribute
   { attributeName :: XString
-  , attributeNameFormat :: PreidentifiedURI AttributeNameFormat
+  , attributeNameFormat :: IdentifiedURI AttributeNameFormat
   , attributeFriendlyName :: Maybe XString
   , attributeXML :: Nodes -- attributes
   , attributeValues :: [Nodes] -- ^§2.7.3.1.1
@@ -395,7 +396,7 @@ instance XP.XmlPickler Attribute where
   xpickle = xpElem "Attribute" $ [XP.biCase|
       ((((n, f), u), v), x) <-> Attribute n f u x v|]
     XP.>$<  (XP.xpAttr "Name" XS.xpString
-      XP.>*< XP.xpDefault (Preidentified AttributeNameFormatUnspecified) (XP.xpAttr "NameFormat" XP.xpickle)
+      XP.>*< XP.xpDefault (Identified AttributeNameFormatUnspecified) (XP.xpAttr "NameFormat" XP.xpickle)
       XP.>*< XP.xpAttrImplied "FriedlyName" XS.xpString
       XP.>*< XP.xpCheckEmptyContents (XP.xpList (xpElem "AttributeValue" XP.xpTrees))
       XP.>*< XP.xpTrees)
@@ -429,22 +430,23 @@ data DecisionType
   | DecisionTypeIndeterminate
   deriving (Eq, Enum, Bounded, Show)
 
+instance Identifiable XString DecisionType where
+  identifier DecisionTypePermit = "Permit"
+  identifier DecisionTypeDeny = "Deny"
+  identifier DecisionTypeIndeterminate = "Indeterminate"
 instance XP.XmlPickler DecisionType where
-  xpickle = xpEnum (XP.xpTextDT (XPS.scDT (namespaceURI ns) "DecisionType" [])) "DecisionType" g where
-    g DecisionTypePermit = "Permit"
-    g DecisionTypeDeny = "Deny"
-    g DecisionTypeIndeterminate = "Indeterminate"
+  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURI ns) "DecisionType" [])) "DecisionType"
 
 -- |§2.7.4.2
 data Action = Action
-  { actionNamespace :: PreidentifiedURI ActionNamespace
+  { actionNamespace :: IdentifiedURI ActionNamespace
   , action :: XString
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Action where
   xpickle = xpElem "Action" $ [XP.biCase|
       (n, a) <-> Action n a|]
-    XP.>$<  (XP.xpDefault (Preidentified ActionNamespaceRWEDCNegation) (XP.xpAttr "Namespace" XP.xpickle)
+    XP.>$<  (XP.xpDefault (Identified ActionNamespaceRWEDCNegation) (XP.xpAttr "Namespace" XP.xpickle)
       XP.>*< XP.xpText0)
 
 -- |§2.7.4.3

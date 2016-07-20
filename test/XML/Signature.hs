@@ -18,10 +18,10 @@ tests = U.test
     Signature (Just "MyFirstSignature")
       (SignedInfo Nothing
         (CanonicalizationMethod
-          (Preidentified (CanonicalXML10 False))
+          (Identified (CanonicalXML10 False))
           [])
         (SignatureMethod
-          (Preidentified SignatureDSA_SHA1)
+          (Identified SignatureDSA_SHA1)
           Nothing
           [])
         (Reference Nothing
@@ -29,11 +29,11 @@ tests = U.test
           Nothing
           (Just $ Transforms $
             Transform
-              (Preidentified TransformBase64)
+              (Identified TransformBase64)
               []
             :| [])
           (DigestMethod
-            (Preidentified DigestSHA1)
+            (Identified DigestSHA1)
             [])
           "\143\169p\199z\239\DLE\243\180\188\171L\186\158\rm\229n\242y"
         :| Reference Nothing
@@ -41,11 +41,11 @@ tests = U.test
           Nothing
           (Just $ Transforms $
             Transform
-              (Preidentified TransformBase64)
+              (Identified TransformBase64)
               []
             :| [])
           (DigestMethod
-            (Preidentified DigestSHA1)
+            (Identified DigestSHA1)
             [])
           "R\181\203\f\176H\181\174\172\146\133y\252\SI\DLE\223\193\132\195\142"
         : []))
@@ -75,10 +75,10 @@ tests = U.test
     Signature Nothing
       (SignedInfo Nothing
         (CanonicalizationMethod 
-          (Preidentified (CanonicalXML10 False))
+          (Identified (CanonicalXML10 False))
           [])
         (SignatureMethod 
-          (Preidentified SignatureRSA_SHA1)
+          (Identified SignatureRSA_SHA1)
           Nothing
           [])
         (Reference Nothing
@@ -86,7 +86,7 @@ tests = U.test
           Nothing
           Nothing
           (DigestMethod 
-            (Preidentified DigestSHA1)
+            (Identified DigestSHA1)
             [])
           "\235Cof\251]L\US\187RyK\167\241\246\226\158\225\225\187"
         :| []))
@@ -111,10 +111,10 @@ tests = U.test
     Signature Nothing
       (SignedInfo Nothing
         (CanonicalizationMethod 
-          (Preidentified (CanonicalXML10 False))
+          (Identified (CanonicalXML10 False))
           [])
         (SignatureMethod
-          (Preidentified SignatureDSA_SHA1)
+          (Identified SignatureDSA_SHA1)
           Nothing
           [])
         (Reference Nothing
@@ -122,7 +122,7 @@ tests = U.test
           Nothing
           Nothing
           (DigestMethod
-            (Preidentified DigestSHA1)
+            (Identified DigestSHA1)
             [])
           "\235Cof\251]L\US\187RyK\167\241\246\226\158\225\225\187"
         :| []))

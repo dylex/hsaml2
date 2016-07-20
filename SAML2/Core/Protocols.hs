@@ -2,12 +2,14 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- SAML Protocols
 --
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §3
 module SAML2.Core.Protocols where
 
+import qualified Data.ByteString.Lazy as BSL
 import Control.Lens.Lens (Lens')
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
@@ -36,7 +38,7 @@ data ProtocolType = ProtocolType
   , protocolVersion :: SAMLVersion
   , protocolIssueInstant :: DateTime
   , protocolDestination :: Maybe AnyURI
-  , protocolConsent :: PreidentifiedURI Consent
+  , protocolConsent :: IdentifiedURI Consent
   , protocolIssuer :: Maybe SAML.Issuer
   , protocolSignature :: Maybe DS.Signature
   , protocolExtensions :: [Node]
@@ -50,7 +52,7 @@ instance XP.XmlPickler ProtocolType where
       XP.>*< XP.xpAttr "Version" XP.xpickle
       XP.>*< XP.xpAttr "IssueInstant" XS.xpDateTime
       XP.>*< XP.xpAttrImplied "Destination" XS.xpAnyURI
-      XP.>*< XP.xpDefault (Preidentified ConsentUnspecified) (XP.xpAttr "Consent" XP.xpickle)
+      XP.>*< XP.xpDefault (Identified ConsentUnspecified) (XP.xpAttr "Consent" XP.xpickle)
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption (xpElem "Extensions" $ XP.xpList1 XP.xpTree))
@@ -59,11 +61,11 @@ class XP.XmlPickler a => SAMLProtocol a where
   samlProtocol' :: Lens' a ProtocolType
   isSAMLResponse :: a -> Bool
 
-samlProtocolXML :: SAMLProtocol a => a -> String
+samlProtocolXML :: SAMLProtocol a => a -> BSL.ByteString
 samlProtocolXML = XP.pickleDoc XP.xpickle
-  HXT.>>> HXT.runLA (HXT.xshow (HXT.getChildren
+  HXT.>>> HXT.runLA (HXT.xshowBlob (HXT.getChildren
     HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs))
-  HXT.>>> concat
+  HXT.>>> BSL.concat
 
 -- |§3.2.1
 newtype RequestAbstractType = RequestAbstractType
@@ -116,7 +118,7 @@ instance XP.XmlPickler Status where
 -- |§3.2.2.2
 data StatusCode = StatusCode
   { statusCode1 :: StatusCode1
-  , statusCodes :: [PreidentifiedURI StatusCode2]
+  , statusCodes :: [IdentifiedURI StatusCode2]
   } deriving (Eq, Show)
 
 instance XP.XmlPickler StatusCode where
@@ -138,12 +140,14 @@ data StatusCode1
   | StatusVersionMismatch
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler StatusCode1 where
-  xpickle = xpEnumSAMLURN "status" f where
+instance Identifiable URI StatusCode1 where
+  identifier = samlURNIdentifier "status" . f where
     f StatusSuccess         = (SAML20, "Success")
     f StatusRequester       = (SAML20, "Requester")
     f StatusResponder       = (SAML20, "Responder")
     f StatusVersionMismatch = (SAML20, "VersionMismatch")
+instance XP.XmlPickler StatusCode1 where
+  xpickle = xpIdentifier XS.xpAnyURI "status"
 
 data StatusCode2
   = StatusAuthnFailed
@@ -167,8 +171,8 @@ data StatusCode2
   | StatusUnsupportedBinding      
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler (PreidentifiedURI StatusCode2) where
-  xpickle = xpPreidentifiedSAMLURN "status" f where
+instance Identifiable URI StatusCode2 where
+  identifier = samlURNIdentifier "status" . f where
     f StatusAuthnFailed               = (SAML20, "AuthnFailed")
     f StatusInvalidAttrNameOrValue    = (SAML20, "InvalidAttrNameOrValue")
     f StatusInvalidNameIDPolicy       = (SAML20, "InvalidNameIDPolicy")
@@ -272,12 +276,13 @@ data AuthnContextComparisonType
   | ComparisonBetter
   deriving (Eq, Enum, Bounded, Show)
 
+instance Identifiable XString AuthnContextComparisonType where
+  identifier ComparisonExact = "exact"
+  identifier ComparisonMinimum = "minimum"
+  identifier ComparisonMaximum = "maximum"
+  identifier ComparisonBetter = "better"
 instance XP.XmlPickler AuthnContextComparisonType where
-  xpickle = xpEnum (XP.xpTextDT (XPS.scDT (namespaceURI ns) "AuthnContextComparisonType" [])) "AuthnContextComparisonType" g where
-    g ComparisonExact = "exact"
-    g ComparisonMinimum = "minimum"
-    g ComparisonMaximum = "maximum"
-    g ComparisonBetter = "better"
+  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURI ns) "AuthnContextComparisonType" [])) "AuthnContextComparisonType"
 
 -- |§3.3.2.3
 data AttributeQuery = AttributeQuery
@@ -384,7 +389,7 @@ instance SAMLRequest AuthnRequest where
 
 -- |§3.4.1.1
 data NameIDPolicy = NameIDPolicy
-  { nameIDPolicyFormat :: PreidentifiedURI NameIDFormat
+  { nameIDPolicyFormat :: IdentifiedURI NameIDFormat
   , nameIDPolicySPNameQualifier :: Maybe XString
   , nameIDPolicyAllowCreate :: Bool
   } deriving (Eq, Show)
@@ -392,7 +397,7 @@ data NameIDPolicy = NameIDPolicy
 instance XP.XmlPickler NameIDPolicy where
   xpickle = xpElem "NameIDPolicy" $ [XP.biCase|
       ((f, q), c) <-> NameIDPolicy f q c|]
-    XP.>$<  (XP.xpDefault (Preidentified NameIDFormatUnspecified) (XP.xpAttr "Format" XP.xpickle)
+    XP.>$<  (XP.xpDefault (Identified NameIDFormatUnspecified) (XP.xpAttr "Format" XP.xpickle)
       XP.>*< XP.xpAttrImplied "SPNameQualifier" XS.xpString
       XP.>*< XP.xpDefault False (XP.xpAttr "AllowCreate" XS.xpBoolean))
 
@@ -522,7 +527,7 @@ instance SAMLResponse ManageNameIDResponse where
 -- |§3.7.1
 data LogoutRequest = LogoutRequest
   { logoutRequest :: !RequestAbstractType
-  , logoutRequestReason :: Maybe (Preidentified XString LogoutReason)
+  , logoutRequestReason :: Maybe (Identified XString LogoutReason)
   , logoutRequestNotOnOrAfter :: Maybe XS.DateTime
   , logoutRequestIdentifier :: SAML.PossiblyEncrypted SAML.Identifier
   , logoutRequestSessionIndex :: Maybe XString
@@ -563,10 +568,12 @@ data LogoutReason
   | LogoutReasonAdmin
   deriving (Eq, Enum, Bounded, Show)
 
-instance XP.XmlPickler (Preidentified XString LogoutReason) where
-  xpickle = xpPreidentified XS.xpString f where
-    f LogoutReasonUser  = show $ samlURN SAML20 ["logout", "user"]
-    f LogoutReasonAdmin = show $ samlURN SAML20 ["logout", "admin"]
+instance Identifiable XString LogoutReason where
+  identifier = show . samlURNIdentifier "logout" . f where
+    f LogoutReasonUser  = (SAML20, "user")
+    f LogoutReasonAdmin = (SAML20, "admin")
+instance XP.XmlPickler (Identified XString LogoutReason) where
+  xpickle = xpIdentified XS.xpString
 
 -- |§3.8.1
 data NameIDMappingRequest = NameIDMappingRequest

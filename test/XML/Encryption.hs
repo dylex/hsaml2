@@ -21,11 +21,11 @@ tests = U.test
       Nothing
       Nothing
       (Just $ EncryptionMethod
-        (Preidentified KeyTransportRSAOAEP)
+        (Identified KeyTransportRSAOAEP)
         (Just 256)
         (Just "\246U\174\221")
         (Just $ DigestMethod
-          (Preidentified DigestSHA1)
+          (Identified DigestSHA1)
           [])
         [])
       (Just $ KeyInfo Nothing
@@ -40,7 +40,7 @@ tests = U.test
             Nothing
             Nothing
             (Just $ EncryptionMethod
-              (Preidentified BlockEncryptionTripleDES)
+              (Identified BlockEncryptionTripleDES)
               Nothing
               Nothing
               Nothing
@@ -61,7 +61,7 @@ tests = U.test
           (Unidentified (readURI "example:Agreement/Algorithm"))
           (Just "foo")
           (Just $ DigestMethod
-            (Preidentified DigestSHA1)
+            (Identified DigestSHA1)
             [])
           (Just $ KeyInfo Nothing $
             KeyInfoKeyValue (RSAKeyValue
@@ -77,7 +77,7 @@ tests = U.test
       (CipherReference
         (readURI "http://example.org/pgpkeys/reagle.b64")
         (Transform
-          (Preidentified TransformBase64)
+          (Identified TransformBase64)
           []
         :| []))
       (Just $ EncryptionProperties Nothing $

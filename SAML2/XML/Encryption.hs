@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- XML Encryption Syntax and Processing
 --
@@ -30,7 +31,7 @@ data EncryptedType = EncryptedType
   { encryptedID :: Maybe ID
   , encryptedType :: Maybe AnyURI
   , encryptedMimeType :: Maybe XString
-  , encryptedEncoding :: Maybe (PreidentifiedURI DS.EncodingAlgorithm)
+  , encryptedEncoding :: Maybe (IdentifiedURI DS.EncodingAlgorithm)
   , encryptedEncryptionMethod :: Maybe EncryptionMethod
   , encryptedKeyInfo :: Maybe DS.KeyInfo
   , encryptedCipherData :: CipherData
@@ -50,7 +51,7 @@ instance XP.XmlPickler EncryptedType where
 
 -- |§3.2
 data EncryptionMethod = EncryptionMethod
-  { encryptionAlgorithm :: PreidentifiedURI EncryptionAlgorithm
+  { encryptionAlgorithm :: IdentifiedURI EncryptionAlgorithm
   , encryptionKeySize :: Maybe Int
   , encryptionOAEPparams :: Maybe XS.Base64Binary
   , encryptionDigestMethod :: Maybe DS.DigestMethod
@@ -170,18 +171,17 @@ data EncryptionAlgorithm
   | KeyTransportRSAOAEP -- ^§5.4.2
   deriving (Eq, Bounded, Enum, Show)
 
-instance XP.XmlPickler (PreidentifiedURI EncryptionAlgorithm) where
-  xpickle = xpPreidentifiedURI f where
-    f BlockEncryptionTripleDES = nsFrag "tripledes-cbc"
-    f BlockEncryptionAES128 = nsFrag "aes128-cbc"
-    f BlockEncryptionAES256 = nsFrag "aes256-cbc"
-    f BlockEncryptionAES192 = nsFrag "aes192-cbc"
-    f KeyTransportRSA1_5 = nsFrag "rsa-1_5"
-    f KeyTransportRSAOAEP = nsFrag "rsa-oaep-mgf1p"
+instance Identifiable URI EncryptionAlgorithm where
+  identifier BlockEncryptionTripleDES = nsFrag "tripledes-cbc"
+  identifier BlockEncryptionAES128 = nsFrag "aes128-cbc"
+  identifier BlockEncryptionAES256 = nsFrag "aes256-cbc"
+  identifier BlockEncryptionAES192 = nsFrag "aes192-cbc"
+  identifier KeyTransportRSA1_5 = nsFrag "rsa-1_5"
+  identifier KeyTransportRSAOAEP = nsFrag "rsa-oaep-mgf1p"
 
 -- |§5.5
 data AgreementMethod = AgreementMethod
-  { agreementMethodAlgorithm :: PreidentifiedURI EncryptionAlgorithm
+  { agreementMethodAlgorithm :: IdentifiedURI EncryptionAlgorithm
   , agreementMethodKA_Nonce :: Maybe XS.Base64Binary
   , agreementMethodDigestMethod :: Maybe DS.DigestMethod
   -- Nodes...

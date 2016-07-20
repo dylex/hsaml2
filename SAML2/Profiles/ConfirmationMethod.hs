@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- Confirmation Method Identifiers
 -- 
@@ -7,7 +8,6 @@
 module SAML2.Profiles.ConfirmationMethod where
 
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
 import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 
@@ -18,8 +18,8 @@ data ConfirmationMethod
   | ConfirmationMethodBearer
   deriving (Eq, Enum, Bounded, Show)
 
-instance XP.XmlPickler (PreidentifiedURI ConfirmationMethod) where
-  xpickle = xpPreidentifiedSAMLURN "cm" f where
+instance Identifiable URI ConfirmationMethod where
+  identifier = samlURNIdentifier "cm" . f where
     f ConfirmationMethodHolderOfKey   = (SAML20, "holder-of-key")
     f ConfirmationMethodSenderVouches = (SAML20, "sender-vouches")
     f ConfirmationMethodBearer        = (SAML20, "bearer")

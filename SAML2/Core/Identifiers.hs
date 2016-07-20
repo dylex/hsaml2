@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 -- |
 -- SAML-Defined Identifiers
 --
@@ -7,7 +8,6 @@
 module SAML2.Core.Identifiers where
 
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
 import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 
@@ -19,8 +19,8 @@ data ActionNamespace
   | ActionNamespaceUNIX -- ^§8.1.4: octal
   deriving (Eq, Enum, Bounded, Show)
 
-instance XP.XmlPickler (PreidentifiedURI ActionNamespace) where
-  xpickle = xpPreidentifiedSAMLURN "action" f where
+instance Identifiable URI ActionNamespace where
+  identifier = samlURNIdentifier "action" . f where
     f ActionNamespaceRWEDC          = (SAML10, "rwedc")
     f ActionNamespaceRWEDCNegation  = (SAML10, "rwedc-negation")
     f ActionNamespaceGHPP           = (SAML10, "ghpp")
@@ -33,8 +33,8 @@ data AttributeNameFormat
   | AttributeNameFormatBasic -- ^§8.2.3: Name
   deriving (Eq, Enum, Bounded, Show)
 
-instance XP.XmlPickler (PreidentifiedURI AttributeNameFormat) where
-  xpickle = xpPreidentifiedSAMLURN "attrname-format" f where
+instance Identifiable URI AttributeNameFormat where
+  identifier = samlURNIdentifier "attrname-format" . f where
     f AttributeNameFormatUnspecified = (SAML20, "unspecified")
     f AttributeNameFormatURI         = (SAML20, "uri")
     f AttributeNameFormatBasic       = (SAML20, "basic")
@@ -52,8 +52,8 @@ data NameIDFormat
   | NameIDFormatEncrypted -- ^§3.4.1.1: only for NameIDPolicy
   deriving (Eq, Enum, Bounded, Show)
   
-instance XP.XmlPickler (PreidentifiedURI NameIDFormat) where
-  xpickle = xpPreidentifiedSAMLURN "nameid-format" f where
+instance Identifiable URI NameIDFormat where
+  identifier = samlURNIdentifier "nameid-format" . f where
     f NameIDFormatUnspecified = (SAML11, "unspecified")
     f NameIDFormatEmail       = (SAML11, "emailAddress")
     f NameIDFormatX509        = (SAML11, "X509SubjectName")
@@ -75,8 +75,8 @@ data Consent
   | ConsentInapplicable -- ^§8.4.7
   deriving (Eq, Enum, Bounded, Show)
 
-instance XP.XmlPickler (PreidentifiedURI Consent) where
-  xpickle = xpPreidentifiedSAMLURN "consent" f where
+instance Identifiable URI Consent where
+  identifier = samlURNIdentifier "consent" . f where
     f ConsentUnspecified  = (SAML20, "unspecified")
     f ConsentObtained     = (SAML20, "obtained")
     f ConsentPrior        = (SAML20, "prior")
