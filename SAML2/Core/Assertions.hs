@@ -446,7 +446,7 @@ data Action = Action
 instance XP.XmlPickler Action where
   xpickle = xpElem "Action" $ [XP.biCase|
       (n, a) <-> Action n a|]
-    XP.>$<  (XP.xpDefault (Identified ActionNamespaceRWEDCNegation) (XP.xpAttr "Namespace" XP.xpickle)
+    XP.>$<  (XP.xpAttr "Namespace" XP.xpickle
       XP.>*< XP.xpText0)
 
 -- |§2.7.4.3
