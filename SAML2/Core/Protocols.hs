@@ -12,7 +12,7 @@ module SAML2.Core.Protocols where
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Maybe (fromMaybe)
-import Control.Lens.Lens (Lens')
+import Control.Lens (Lens', lens, (.~), (^.))
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
@@ -631,3 +631,59 @@ instance SAMLProtocol NameIDMappingResponse where
   isSAMLResponse _ = True
 instance SAMLResponse NameIDMappingResponse where
   samlResponse' = $(fieldLens 'nameIDMappingResponse)
+
+data AnyRequest
+  = RequestAssertionIDRequest   AssertionIDRequest
+  | RequestAuthnQuery           AuthnQuery 
+  | RequestAttributeQuery       AttributeQuery 
+  | RequestAuthzDecisionQuery   AuthzDecisionQuery 
+  | RequestAuthnRequest         AuthnRequest 
+  | RequestArtifactResolve      ArtifactResolve 
+  | RequestManageNameIDRequest  ManageNameIDRequest 
+  | RequestLogoutRequest        LogoutRequest 
+  | RequestNameIDMappingRequest NameIDMappingRequest 
+  deriving (Eq, Show)
+
+instance XP.XmlPickler AnyRequest where
+  xpickle = [XP.biCase|
+      Left (Left (Left (Left (Left (Left (Left (Left r))))))) <-> RequestAssertionIDRequest r
+      Left (Left (Left (Left (Left (Left (Left (Right r))))))) <-> RequestAuthnQuery r
+      Left (Left (Left (Left (Left (Left (Right r)))))) <-> RequestAttributeQuery r
+      Left (Left (Left (Left (Left (Right r))))) <-> RequestAuthzDecisionQuery r
+      Left (Left (Left (Left (Right r)))) <-> RequestAuthnRequest r
+      Left (Left (Left (Right r))) <-> RequestArtifactResolve r
+      Left (Left (Right r)) <-> RequestManageNameIDRequest r
+      Left (Right r) <-> RequestLogoutRequest r
+      Right r <-> RequestNameIDMappingRequest r|]
+    XP.>$<  (XP.xpickle
+      XP.>|< XP.xpickle
+      XP.>|< XP.xpickle
+      XP.>|< XP.xpickle
+      XP.>|< XP.xpickle
+      XP.>|< XP.xpickle
+      XP.>|< XP.xpickle
+      XP.>|< XP.xpickle
+      XP.>|< XP.xpickle)
+instance SAMLProtocol AnyRequest where
+  samlProtocol' = samlRequest' . requestProtocol'
+  isSAMLResponse _ = False
+instance SAMLRequest AnyRequest where
+  samlRequest' = lens g s where
+    g (RequestAssertionIDRequest   r) = r ^. samlRequest'
+    g (RequestAuthnQuery           r) = r ^. samlRequest'
+    g (RequestAttributeQuery       r) = r ^. samlRequest'
+    g (RequestAuthzDecisionQuery   r) = r ^. samlRequest'
+    g (RequestAuthnRequest         r) = r ^. samlRequest'
+    g (RequestArtifactResolve      r) = r ^. samlRequest'
+    g (RequestManageNameIDRequest  r) = r ^. samlRequest'
+    g (RequestLogoutRequest        r) = r ^. samlRequest'
+    g (RequestNameIDMappingRequest r) = r ^. samlRequest'
+    s (RequestAssertionIDRequest   r) q = RequestAssertionIDRequest   $ samlRequest' .~ q $ r
+    s (RequestAuthnQuery           r) q = RequestAuthnQuery           $ samlRequest' .~ q $ r
+    s (RequestAttributeQuery       r) q = RequestAttributeQuery       $ samlRequest' .~ q $ r
+    s (RequestAuthzDecisionQuery   r) q = RequestAuthzDecisionQuery   $ samlRequest' .~ q $ r
+    s (RequestAuthnRequest         r) q = RequestAuthnRequest         $ samlRequest' .~ q $ r
+    s (RequestArtifactResolve      r) q = RequestArtifactResolve      $ samlRequest' .~ q $ r
+    s (RequestManageNameIDRequest  r) q = RequestManageNameIDRequest  $ samlRequest' .~ q $ r
+    s (RequestLogoutRequest        r) q = RequestLogoutRequest        $ samlRequest' .~ q $ r
+    s (RequestNameIDMappingRequest r) q = RequestNameIDMappingRequest $ samlRequest' .~ q $ r

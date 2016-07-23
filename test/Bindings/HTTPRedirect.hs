@@ -15,7 +15,24 @@ import XML
 
 tests :: U.Test
 tests = U.test
-  [ U.TestCase $ U.assertEqual "response"
+  [ U.TestCase $ U.assertEqual "request"
+    (RequestLogoutRequest $ LogoutRequest
+      (RequestAbstractType $ ProtocolType
+        "d2b7c388cec36fa7c39c28fd298644a8"
+        SAML20
+        (UTCTime (fromGregorian 2004 1 21) (19*60*60+49))
+        Nothing
+        (Identified ConsentUnspecified)
+        (Just $ Issuer $ simpleNameID NameIDFormatUnspecified "https://IdentityProvider.com/SAML")
+        Nothing
+        []
+        (Just $ BSC.pack "0043bfc1bc45110dae17004005b13a2b"))
+      Nothing
+      Nothing
+      (NotEncrypted $ IdentifierName $ simpleNameID NameIDFormatPersistent "005a06e0-ad82-110d-a556-004005b13a2b")
+      (Just "1"))
+    =<< decodeURI mempty (readURI "https://ServiceProvider.com/SAML/SLO/Browser?SAMLRequest=fVFdS8MwFH0f7D%2BUvGdNsq62oSsIQyhMESc%2B%2BJYlmRbWpObeyvz3puv2IMjyFM7HPedyK1DdsZdb%2F%2BEHfLFfgwVMTt3RgTwzazIEJ72CFqRTnQWJWu7uH7dSLJjsg0ev%2FZFMlttiBWADtt6R%2BSyJr9msiRH7O70sCm31Mj%2Bo%2BC%2B1KA5GlEWeZaogSQMw2MYBKodrIhjLKONU8FdeSsZkVr6T5M0GiHMjvWCknqZXZ2OoPxF7kGnaGOuwxZ%2Fn4L9bY8NC%2By4du1XpRXnxPcXizSZ58KFTeHujEWkNPZylsh9bAMYYUjO2Uiy3jCpTCMo5M1StVjmN9SO150sl9lU6RV2Dp0vsLIy7NM7YU82r9B90PrvCf85W%2FwL8zSVQzAEAAA%3D%3D&RelayState=0043bfc1bc45110dae17004005b13a2b")
+  , U.TestCase $ U.assertEqual "response"
     (LogoutResponse $ StatusResponseType
       (ProtocolType
         "b0730d21b628110d8b7e004005b13a2b"
