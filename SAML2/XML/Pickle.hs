@@ -3,12 +3,16 @@ module SAML2.XML.Pickle
   ( module Text.XML.HXT.Arrow.Pickle.Xml
   , Inv.biCase
   , module Control.Invertible.Monoidal
+  , xpWhitespace
   ) where
 
 import Control.Invertible.Monoidal
+import Control.Monad.State.Class (modify)
+import Data.Char.Properties.XMLCharProps (isXmlSpaceChar)
 import qualified Data.Invertible as Inv
-import Text.XML.HXT.Arrow.Pickle.Schema (scSeq, scAlt)
+import Text.XML.HXT.Arrow.Pickle.Schema (scEmpty, scSeq, scAlt)
 import Text.XML.HXT.Arrow.Pickle.Xml
+import qualified Text.XML.HXT.DOM.XmlNode as XN
 
 instance Inv.Functor PU where
   fmap (f Inv.:<->: g) p = PU -- xpWrap
@@ -32,3 +36,11 @@ instance MonoidalAlt PU where
     , appUnPickle = mchoice (Left <$> appUnPickle p) return (Right <$> appUnPickle q)
     , theSchema = theSchema p `scAlt` theSchema q
     }
+
+-- |Ignore any whitespace and produce nothing
+xpWhitespace :: PU ()
+xpWhitespace = PU
+  { appPickle = const id
+  , appUnPickle = modify $ \s -> s{ contents = dropWhile (any (all isXmlSpaceChar) . XN.getText) $ contents s }
+  , theSchema = scEmpty
+  }

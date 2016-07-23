@@ -24,11 +24,8 @@ import SAML2.Profiles.ConfirmationMethod
 ns :: Namespace
 ns = mkNamespace "" $ samlURN SAML20 ["assertion"]
 
-nsName :: XString -> QName
-nsName = mkNName ns
-
 xpElem :: String -> XP.PU a -> XP.PU a
-xpElem = XP.xpElemQN . nsName
+xpElem = xpTrimElemNS ns
 
 -- |§2.2.1
 data BaseID id = BaseID

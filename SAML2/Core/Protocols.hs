@@ -30,11 +30,8 @@ import SAML2.Bindings.General (RelayState)
 ns :: Namespace
 ns = mkNamespace "samlp" $ samlURN SAML20 ["protocol"]
 
-nsName :: XString -> QName
-nsName = mkNName ns
-
 xpElem :: String -> XP.PU a -> XP.PU a
-xpElem = XP.xpElemQN . nsName
+xpElem = xpTrimElemNS ns
 
 data ProtocolType = ProtocolType
   { protocolID :: XS.ID
@@ -77,7 +74,7 @@ samlXMLToProtocol :: SAMLProtocol a => BSL.ByteString -> Either String a
 samlXMLToProtocol = foldr (je . XP.unpickleDoc' XP.xpickle) (Left "invalid XML")
   . HXT.runLA
     (HXT.xreadDoc
-    HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
+    -- HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
     HXT.>>> HXT.propagateNamespaces
     HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
   . BSLC.unpack -- XXX encoding?

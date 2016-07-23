@@ -29,11 +29,8 @@ nsFrag = httpURI "www.w3.org" "/2000/09/xmldsig" "" . ('#':)
 ns :: Namespace 
 ns = mkNamespace "ds" $ nsFrag ""
 
-nsName :: XString -> QName
-nsName = mkNName ns
-
 xpElem :: String -> XP.PU a -> XP.PU a
-xpElem = XP.xpElemQN . nsName
+xpElem = xpTrimElemNS ns
 
 -- |§4.0.1
 type CryptoBinary = Integer -- as Base64Binary

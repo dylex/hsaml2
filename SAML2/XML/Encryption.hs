@@ -20,11 +20,8 @@ nsFrag = httpURI "www.w3.org" "/2001/04/xmlenc" "" . ('#':)
 ns :: Namespace 
 ns = mkNamespace "xenc" $ nsFrag ""
 
-nsName :: XString -> QName
-nsName = mkNName ns
-
 xpElem :: String -> XP.PU a -> XP.PU a
-xpElem = XP.xpElemQN . nsName
+xpElem = xpTrimElemNS ns
 
 -- |§3.1
 data EncryptedType = EncryptedType

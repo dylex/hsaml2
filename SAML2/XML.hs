@@ -7,6 +7,7 @@ module SAML2.XML
   ( module SAML2.XML.Types
   , module SAML2.Core.Datatypes
   , URI
+  , xpTrimElemNS
   , IP, xpIP
   , Identified(..)
   , Identifiable(..)
@@ -23,6 +24,9 @@ import SAML2.XML.Types
 import SAML2.Core.Datatypes
 import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Schema as XS
+
+xpTrimElemNS :: Namespace -> String -> XP.PU a -> XP.PU a
+xpTrimElemNS ns n c = XP.xpWhitespace XP.*< XP.xpElemQN (mkNName ns n) (c XP.>* XP.xpWhitespace)
 
 type IP = XS.String
 
