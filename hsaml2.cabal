@@ -40,6 +40,7 @@ library
     SAML2.Profiles
     SAML2.Profiles.ConfirmationMethod
     SAML2.Bindings
+    SAML2.Bindings.General
     SAML2.Bindings.Identifiers
     SAML2.Bindings.HTTPRedirect
   other-modules:
@@ -79,4 +80,5 @@ test-suite tests
     hxt-http,
     network-uri,
     semigroups,
+    time,
     HUnit

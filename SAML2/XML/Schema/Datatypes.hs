@@ -50,7 +50,8 @@ xpDateTime = XP.PU
   , XP.appPickle = XP.putCont . XN.mkText . formatTime defaultTimeLocale fmt
   , XP.appUnPickle = XP.getCont >>= XP.liftMaybe "dateTime expects text" . XN.getText >>= parseTimeM True defaultTimeLocale fmt
   }
-  where fmt = "%0Y-%m-%dT%H:%M:%S%Q"
+  where
+  fmt = "%0Y-%m-%dT%H:%M:%S%Q%Z"
 
 -- |§3.2.16
 type Base64Binary = BS.ByteString

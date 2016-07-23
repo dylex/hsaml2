@@ -10,6 +10,8 @@
 module SAML2.Core.Protocols where
 
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.Char8 as BSLC
+import Data.Maybe (fromMaybe)
 import Control.Lens.Lens (Lens')
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
@@ -23,6 +25,7 @@ import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 import qualified SAML2.Core.Assertions as SAML
 import SAML2.Core.Identifiers
+import SAML2.Bindings.General (RelayState)
 
 ns :: Namespace
 ns = mkNamespace "samlp" $ samlURN SAML20 ["protocol"]
@@ -42,13 +45,12 @@ data ProtocolType = ProtocolType
   , protocolIssuer :: Maybe SAML.Issuer
   , protocolSignature :: Maybe DS.Signature
   , protocolExtensions :: [Node]
+  , relayState :: Maybe RelayState -- ^out-of-band data, not part of XML
   } deriving (Eq, Show)
 
 instance XP.XmlPickler ProtocolType where
-  xpickle = [XP.biCase|
-      (((((((i, v), t), d), c), u), g), Nothing) <-> ProtocolType i v t d c u g []
-      (((((((i, v), t), d), c), u), g), Just x) <-> ProtocolType i v t d c u g x|]
-    XP.>$<  (XP.xpAttr "ID" XS.xpID
+  xpickle = XP.xpWrap (pt, tp)
+    $       (XP.xpAttr "ID" XS.xpID
       XP.>*< XP.xpAttr "Version" XP.xpickle
       XP.>*< XP.xpAttr "IssueInstant" XS.xpDateTime
       XP.>*< XP.xpAttrImplied "Destination" XS.xpAnyURI
@@ -56,16 +58,32 @@ instance XP.XmlPickler ProtocolType where
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption (xpElem "Extensions" $ XP.xpList1 XP.xpTree))
+    where
+    pt (((((((i, v), t), d), c), u), g), x) = ProtocolType i v t d c u g (fromMaybe [] x) Nothing
+    tp (ProtocolType i v t d c u g [] _) = (((((((i, v), t), d), c), u), g), Nothing)
+    tp (ProtocolType i v t d c u g x _) = (((((((i, v), t), d), c), u), g), Just x)
 
 class XP.XmlPickler a => SAMLProtocol a where
   samlProtocol' :: Lens' a ProtocolType
   isSAMLResponse :: a -> Bool
 
-samlProtocolXML :: SAMLProtocol a => a -> BSL.ByteString
-samlProtocolXML = XP.pickleDoc XP.xpickle
+samlProtocolToXML :: SAMLProtocol a => a -> BSL.ByteString
+samlProtocolToXML = XP.pickleDoc XP.xpickle
   HXT.>>> HXT.runLA (HXT.xshowBlob (HXT.getChildren
     HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs))
   HXT.>>> BSL.concat
+
+samlXMLToProtocol :: SAMLProtocol a => BSL.ByteString -> Either String a
+samlXMLToProtocol = foldr (je . XP.unpickleDoc' XP.xpickle) (Left "invalid XML")
+  . HXT.runLA
+    (HXT.xreadDoc
+    HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
+    HXT.>>> HXT.propagateNamespaces
+    HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
+  . BSLC.unpack -- XXX encoding?
+  where
+  je x (Left _) = x
+  je _ x = x
 
 -- |§3.2.1
 newtype RequestAbstractType = RequestAbstractType
@@ -109,7 +127,7 @@ data Status = Status
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Status where
-  xpickle = [XP.biCase|
+  xpickle = xpElem "Status" $ [XP.biCase|
       ((c, m), d) <-> Status c m d|]
     XP.>$<  (XP.xpickle
       XP.>*< XP.xpOption (xpElem "StatusMessage" XP.xpText0)
@@ -192,6 +210,9 @@ instance Identifiable URI StatusCode2 where
     f StatusUnknownAttrProfile        = (SAML20, "UnknownAttrProfile")
     f StatusUnknownPrincipal          = (SAML20, "UnknownPrincipal")
     f StatusUnsupportedBinding        = (SAML20, "UnsupportedBinding")
+
+successStatus :: Status
+successStatus = Status (StatusCode StatusSuccess []) Nothing Nothing
 
 -- |§3.3.1
 data AssertionIDRequest = AssertionIDRequest

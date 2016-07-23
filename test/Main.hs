@@ -6,12 +6,14 @@ import qualified Test.HUnit as U
 import qualified XML.Canonical
 import qualified XML.Signature
 import qualified XML.Encryption
+import qualified Bindings.HTTPRedirect
 
 tests :: U.Test
 tests = U.test
   [ U.TestLabel "XML.Canonical" XML.Canonical.tests
   , U.TestLabel "XML.Signature" XML.Signature.tests
   , U.TestLabel "XML.Encryption" XML.Encryption.tests
+  , U.TestLabel "Bindings.HTTPRedirect" Bindings.HTTPRedirect.tests
   ]
 
 main :: IO ()

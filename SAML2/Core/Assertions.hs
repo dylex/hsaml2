@@ -53,12 +53,14 @@ data NameID = NameID
 simpleNameID :: NameIDFormat -> XString -> NameID
 simpleNameID f s = NameID (BaseID Nothing Nothing s) (Identified f) Nothing
 
+xpNameID :: XP.PU NameID
+xpNameID = [XP.biCase|((f, p), b) <-> NameID b f p|]
+  XP.>$<  (XP.xpDefault (Identified NameIDFormatUnspecified) (XP.xpAttr "Format" XP.xpickle)
+    XP.>*< XP.xpAttrImplied "SPProvidedID" XS.xpString
+    XP.>*< xpBaseID XS.xpString)
+
 instance XP.XmlPickler NameID where
-  xpickle = xpElem "NameID" $
-    [XP.biCase|((f, p), b) <-> NameID b f p|]
-    XP.>$<  (XP.xpDefault (Identified NameIDFormatUnspecified) (XP.xpAttr "Format" XP.xpickle)
-      XP.>*< XP.xpAttrImplied "SPProvidedID" XS.xpString
-      XP.>*< xpBaseID XS.xpString)
+  xpickle = xpElem "NameID" xpNameID
 
 type EncryptedNameID = EncryptedElement NameID
 
@@ -125,7 +127,7 @@ newtype Issuer = Issuer NameID
 instance XP.XmlPickler Issuer where
   xpickle = xpElem "Issuer" $ [XP.biCase|
       n <-> Issuer n|]
-    XP.>$< XP.xpickle
+    XP.>$< xpNameID
 
 -- |§2.3.1
 newtype AssertionIDRef = AssertionIDRef ID
