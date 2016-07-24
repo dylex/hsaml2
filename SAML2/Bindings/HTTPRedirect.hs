@@ -16,6 +16,7 @@ module SAML2.Bindings.HTTPRedirect
   ) where
 
 import qualified Codec.Compression.Zlib.Raw as DEFLATE
+import Control.Applicative ((<|>))
 import Control.Lens ((^.), (.~), (<<.~))
 import Control.Monad (unless)
 import qualified Data.ByteString as BS
@@ -24,6 +25,7 @@ import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Monoid ((<>))
+import Data.Proxy (Proxy(..))
 import Network.HTTP.Types.Header (ResponseHeaders, hLocation, hCacheControl, hPragma)
 import Network.HTTP.Types.URI (Query, renderQuery, urlDecode)
 import Network.HTTP.Types.QueryLike (toQuery)
@@ -44,8 +46,9 @@ instance Identifiable URI Encoding where
   identifier = samlURNIdentifier "bindings:URL-Encoding" . f where
     f EncodingDEFLATE = (SAML20, "DEFLATE")
 
-paramSAML :: SAMLP.SAMLProtocol a => a -> BS.ByteString
-paramSAML p = if SAMLP.isSAMLResponse p then "SAMLResponse" else "SAMLRequest"
+paramSAML :: Bool -> BS.ByteString
+paramSAML False = "SAMLRequest"
+paramSAML True = "SAMLResponse"
 
 paramRelayState, paramSignature, paramSignatureAlgorithm, paramEncoding :: BS.ByteString
 paramRelayState = "RelayState"
@@ -66,7 +69,7 @@ encodeQuery sk p = case sk of
     $ DEFLATE.compressWith DEFLATE.defaultCompressParams{ DEFLATE.compressLevel = DEFLATE.bestCompression }
     $ SAMLP.samlProtocolToXML p'
   sq = toQuery $ 
-    (paramSAML p, BSL.toStrict pv)
+    (paramSAML $ SAMLP.isSAMLResponse p, BSL.toStrict pv)
     : maybeToList ((paramRelayState, ) <$> SAMLP.relayState (p' ^. SAMLP.samlProtocol'))
 
 httpHeaders :: ResponseHeaders
@@ -86,7 +89,9 @@ encodeHeaders sk p = do
 
 decodeURI :: forall a . SAMLP.SAMLProtocol a => DS.PublicKeys -> URI -> IO a
 decodeURI pk ru = do
-  pq <- maybe (fail $ BSC.unpack pn ++ " missing") return $ ql pn
+  pq <- case SAMLP.isSAMLResponse_ (Proxy :: Proxy a) of
+    Nothing -> maybe (fail "SAWL param missing") return $ ql (paramSAML False) <|> ql (paramSAML True)
+    Just resp -> let pn = paramSAML resp in maybe (fail $ BSC.unpack pn ++ " missing") return $ ql pn
   pd <- case enc of
     Identified EncodingDEFLATE ->
       return $ DEFLATE.decompress $ Base64.decodeLenient $ BSL.fromStrict $ fst pq
@@ -111,7 +116,6 @@ decodeURI pk ru = do
   ql v = lookup v q
   puri bs = fromMaybe nullURI{ uriPath = s } $ parseURIReference s where s = BSC.unpack bs
   enc = maybe (Identified EncodingDEFLATE) reidentify $ fmap (puri . fst) $ ql paramEncoding
-  pn = paramSAML (undefined :: a)
   rsq = ql paramRelayState
   sigres (Just True) = return ()
   sigres (Just False) = fail "Signature verification failed"

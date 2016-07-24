@@ -9,10 +9,11 @@
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §3
 module SAML2.Core.Protocols where
 
+import Control.Lens (Lens', lens, (.~), (^.))
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Maybe (fromMaybe)
-import Control.Lens (Lens', lens, (.~), (^.))
+import Data.Proxy (Proxy, asProxyTypeOf)
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
@@ -63,6 +64,8 @@ instance XP.XmlPickler ProtocolType where
 class XP.XmlPickler a => SAMLProtocol a where
   samlProtocol' :: Lens' a ProtocolType
   isSAMLResponse :: a -> Bool
+  isSAMLResponse_ :: Proxy a -> Maybe Bool
+  isSAMLResponse_ = Just . isSAMLResponse . asProxyTypeOf undefined 
 
 samlProtocolToXML :: SAMLProtocol a => a -> BSL.ByteString
 samlProtocolToXML = XP.pickleDoc XP.xpickle
@@ -630,15 +633,15 @@ instance SAMLResponse NameIDMappingResponse where
   samlResponse' = $(fieldLens 'nameIDMappingResponse)
 
 data AnyRequest
-  = RequestAssertionIDRequest   AssertionIDRequest
-  | RequestAuthnQuery           AuthnQuery 
-  | RequestAttributeQuery       AttributeQuery 
-  | RequestAuthzDecisionQuery   AuthzDecisionQuery 
-  | RequestAuthnRequest         AuthnRequest 
-  | RequestArtifactResolve      ArtifactResolve 
-  | RequestManageNameIDRequest  ManageNameIDRequest 
-  | RequestLogoutRequest        LogoutRequest 
-  | RequestNameIDMappingRequest NameIDMappingRequest 
+  = RequestAssertionIDRequest   !AssertionIDRequest
+  | RequestAuthnQuery           !AuthnQuery 
+  | RequestAttributeQuery       !AttributeQuery 
+  | RequestAuthzDecisionQuery   !AuthzDecisionQuery 
+  | RequestAuthnRequest         !AuthnRequest 
+  | RequestArtifactResolve      !ArtifactResolve 
+  | RequestManageNameIDRequest  !ManageNameIDRequest 
+  | RequestLogoutRequest        !LogoutRequest 
+  | RequestNameIDMappingRequest !NameIDMappingRequest 
   deriving (Eq, Show)
 
 instance XP.XmlPickler AnyRequest where
@@ -684,3 +687,45 @@ instance SAMLRequest AnyRequest where
     s (RequestManageNameIDRequest  r) q = RequestManageNameIDRequest  $ samlRequest' .~ q $ r
     s (RequestLogoutRequest        r) q = RequestLogoutRequest        $ samlRequest' .~ q $ r
     s (RequestNameIDMappingRequest r) q = RequestNameIDMappingRequest $ samlRequest' .~ q $ r
+
+data AnyResponse
+  = ResponseResponse         !Response 
+  | ResponseArtifactResponse !ArtifactResponse 
+  deriving (Eq, Show)
+
+instance XP.XmlPickler AnyResponse where
+  xpickle = [XP.biCase|
+      Left r <-> ResponseResponse r
+      Right r <-> ResponseArtifactResponse r|]
+    XP.>$<  (XP.xpickle
+      XP.>|< XP.xpickle)
+instance SAMLProtocol AnyResponse where
+  samlProtocol' = samlResponse' . statusProtocol'
+  isSAMLResponse _ = True
+instance SAMLResponse AnyResponse where
+  samlResponse' = lens g s where
+    g (ResponseResponse         r) = r ^. samlResponse'
+    g (ResponseArtifactResponse r) = r ^. samlResponse'
+    s (ResponseResponse         r) q = ResponseResponse         $ samlResponse' .~ q $ r
+    s (ResponseArtifactResponse r) q = ResponseArtifactResponse $ samlResponse' .~ q $ r
+    
+data AnyProtocol
+  = ProtocolRequest  !AnyRequest
+  | ProtocolResponse !AnyResponse
+  deriving (Eq, Show)
+
+instance XP.XmlPickler AnyProtocol where
+  xpickle = [XP.biCase|
+      Left r <-> ProtocolRequest r
+      Right r <-> ProtocolResponse r|]
+    XP.>$<  (XP.xpickle
+      XP.>|< XP.xpickle)
+instance SAMLProtocol AnyProtocol where
+  samlProtocol' = lens g s where
+    g (ProtocolRequest  r) = r ^. samlProtocol'
+    g (ProtocolResponse r) = r ^. samlProtocol'
+    s (ProtocolRequest  r) q = ProtocolRequest  $ samlProtocol' .~ q $ r
+    s (ProtocolResponse r) q = ProtocolResponse $ samlProtocol' .~ q $ r
+  isSAMLResponse (ProtocolRequest _) = False
+  isSAMLResponse (ProtocolResponse _) = True
+  isSAMLResponse_ _ = Nothing
