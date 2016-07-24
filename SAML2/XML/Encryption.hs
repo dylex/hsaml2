@@ -58,11 +58,11 @@ data EncryptionMethod = EncryptionMethod
 instance XP.XmlPickler EncryptionMethod where
   xpickle = xpElem "EncryptionMethod" $
     [XP.biCase|((((a, s), p), d), x) <-> EncryptionMethod a s p d x|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
+    XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
       XP.>*< XP.xpOption (xpElem "KeySize" XP.xpickle)
       XP.>*< XP.xpOption (xpElem "OAEPparams" XS.xpBase64Binary)
       XP.>*< XP.xpOption XP.xpickle
-      XP.>*< XP.xpTrees)
+      XP.>*< xpAnyCont)
 
 -- |§3.3
 data CipherData
@@ -130,8 +130,8 @@ instance XP.XmlPickler Reference where
     XP.>$< (refs "DataReference" XP.>|< refs "KeyReference")
     where
     refs n = xpElem n
-      $ XP.xpCheckEmptyAttributes (XP.xpAttr "URI" XS.xpAnyURI)
-      XP.>*< XP.xpTrees
+      $ XP.xpAttr "URI" XS.xpAnyURI
+      XP.>*< XP.xpList xpTrimAnyElem
 
 -- |§3.7
 data EncryptionProperties = EncryptionProperties
@@ -156,7 +156,7 @@ instance XP.XmlPickler EncryptionProperty where
     [XP.biCase|((i, t), x) <-> EncryptionProperty i t x|] 
     XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< XP.xpAttrImplied "Target" XS.xpAnyURI
-      XP.>*< XP.xpTrees) -- really only should allow xml: attributes
+      XP.>*< xpAny)
 
 -- |§5.1
 data EncryptionAlgorithm

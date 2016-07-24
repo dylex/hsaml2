@@ -224,7 +224,7 @@ data SubjectConfirmationData = SubjectConfirmationData
   , subjectConfirmationInResponseTo :: Maybe ID
   , subjectConfirmationAddress :: Maybe IP
   , subjectConfirmationKeyInfo :: [DS.KeyInfo]
-  , subjectConfirmationXML :: Nodes
+  , subjectConfirmationXML :: Nodes -- ^anything
   } deriving (Eq, Show)
 
 instance XP.XmlPickler SubjectConfirmationData where
@@ -236,7 +236,7 @@ instance XP.XmlPickler SubjectConfirmationData where
       XP.>*< XP.xpAttrImplied "InResponseTo" XS.xpNCName
       XP.>*< XP.xpAttrImplied "Address" xpIP
       XP.>*< XP.xpList XP.xpickle
-      XP.>*< XP.xpTrees)
+      XP.>*< xpAny)
 
 -- |§2.5.1
 data Conditions = Conditions
@@ -273,7 +273,7 @@ instance XP.XmlPickler Condition where
       XP.>|< xpElem "ProxyRestriction"
               (XP.xpAttrImplied "Count" XS.xpNonNegativeInteger
         XP.>*< XP.xpList XP.xpickle)
-      XP.>|< XP.xpTree)
+      XP.>|< xpTrimAnyElem)
 
 -- |§2.5.1.4
 newtype Audience = Audience AnyURI
@@ -296,7 +296,7 @@ instance XP.XmlPickler AdviceElement where
       Left a <-> AdviceAssertion a
       Right x <-> Advice x|]
     XP.>$<  (XP.xpickle
-      XP.>|< XP.xpTree)
+      XP.>|< xpTrimAnyElem)
 
 -- |§2.7.1
 data Statement
@@ -315,7 +315,7 @@ instance XP.XmlPickler Statement where
     XP.>$<  (XP.xpickle
       XP.>|< XP.xpickle
       XP.>|< XP.xpickle
-      XP.>|< XP.xpTree)
+      XP.>|< xpTrimAnyElem)
 
 -- |§2.7.2
 data AuthnStatement = AuthnStatement
@@ -362,7 +362,7 @@ instance XP.XmlPickler AuthnContext where
       XP.>*< XP.xpList (xpElem "AuthenticatingAuthority" XS.xpAnyURI))
 
 data AuthnContextDecl
-  = AuthnContextDecl Node
+  = AuthnContextDecl Nodes
   | AuthnContextDeclRef AnyURI
   deriving (Eq, Show)
 
@@ -370,7 +370,7 @@ instance XP.XmlPickler AuthnContextDecl where
   xpickle = [XP.biCase|
       Left d <-> AuthnContextDecl d
       Right r <-> AuthnContextDeclRef r|]
-    XP.>$<  (xpElem "AuthnContextDecl" XP.xpTree
+    XP.>$<  (xpElem "AuthnContextDecl" xpAny
       XP.>|< xpElem "AuthnContextDeclRef" XS.xpAnyURI)
 
 -- |§2.7.3
@@ -397,8 +397,8 @@ instance XP.XmlPickler Attribute where
     XP.>$<  (XP.xpAttr "Name" XS.xpString
       XP.>*< XP.xpDefault (Identified AttributeNameFormatUnspecified) (XP.xpAttr "NameFormat" XP.xpickle)
       XP.>*< XP.xpAttrImplied "FriedlyName" XS.xpString
-      XP.>*< XP.xpCheckEmptyContents (XP.xpList (xpElem "AttributeValue" XP.xpTrees))
-      XP.>*< XP.xpTrees)
+      XP.>*< XP.xpList (xpElem "AttributeValue" xpAny)
+      XP.>*< xpAnyAttrs)
 
 -- |§2.7.3.2
 type EncryptedAttribute = EncryptedElement Attribute

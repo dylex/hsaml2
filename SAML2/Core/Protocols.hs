@@ -55,7 +55,7 @@ instance XP.XmlPickler ProtocolType where
       XP.>*< XP.xpDefault (Identified ConsentUnspecified) (XP.xpAttr "Consent" XP.xpickle)
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
-      XP.>*< XP.xpOption (xpElem "Extensions" $ XP.xpList1 XP.xpTree))
+      XP.>*< XP.xpOption (xpElem "Extensions" $ XP.xpList1 xpTrimAnyElem))
     where
     pt (((((((i, v), t), d), c), u), g), x) = ProtocolType i v t d c u g (fromMaybe [] x) Nothing
     tp (ProtocolType i v t d c u g [] _) = (((((((i, v), t), d), c), u), g), Nothing)
@@ -131,7 +131,7 @@ instance XP.XmlPickler Status where
       ((c, m), d) <-> Status c m d|]
     XP.>$<  (XP.xpickle
       XP.>*< XP.xpOption (xpElem "StatusMessage" XP.xpText0)
-      XP.>*< XP.xpOption (xpElem "StatusDetail" XP.xpTrees))
+      XP.>*< XP.xpOption (xpElem "StatusDetail" xpAnyCont))
 
 -- |§3.2.2.2
 data StatusCode = StatusCode
@@ -482,14 +482,14 @@ instance SAMLRequest ArtifactResolve where
 -- |§3.5.2
 data ArtifactResponse = ArtifactResponse
   { artifactResponse :: !StatusResponseType
-  , artifactResponseMessage :: Node
+  , artifactResponseMessage :: Maybe Node
   } deriving (Eq, Show)
 
 instance XP.XmlPickler ArtifactResponse where
   xpickle = xpElem "ArtifactResponse" $ [XP.biCase|
       (r, a) <-> ArtifactResponse r a|]
     XP.>$<  (XP.xpickle
-      XP.>*< XP.xpTree)
+      XP.>*< XP.xpOption xpTrimAnyElem)
 instance SAMLProtocol ArtifactResponse where
   samlProtocol' = samlResponse' . statusProtocol'
   isSAMLResponse _ = True

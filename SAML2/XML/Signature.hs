@@ -65,7 +65,7 @@ data SignatureValue = SignatureValue
 instance XP.XmlPickler SignatureValue where
   xpickle = xpElem "SignatureValue" $
     [XP.biCase|(i, v) <-> SignatureValue i v|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttrImplied "Id" XS.xpID)
+    XP.>$< (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< XS.xpBase64Binary)
 
 -- |§4.3
@@ -79,7 +79,7 @@ data SignedInfo = SignedInfo
 instance XP.XmlPickler SignedInfo where
   xpickle = xpElem "SignedInfo" $
     [XP.biCase|(((i, c), s), r) <-> SignedInfo i c s r|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttrImplied "Id" XS.xpID)
+    XP.>$< (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpList1 XP.xpickle)
@@ -93,8 +93,8 @@ data CanonicalizationMethod = CanonicalizationMethod
 instance XP.XmlPickler CanonicalizationMethod where
   xpickle = xpElem "CanonicalizationMethod" $
     [XP.biCase|(a, x) <-> CanonicalizationMethod a x|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
-      XP.>*< XP.xpTrees)
+    XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
+      XP.>*< xpAnyCont)
 
 -- |§4.3.2
 data SignatureMethod = SignatureMethod
@@ -106,9 +106,9 @@ data SignatureMethod = SignatureMethod
 instance XP.XmlPickler SignatureMethod where
   xpickle = xpElem "SignatureMethod" $
     [XP.biCase|((a, l), x) <-> SignatureMethod a l x|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
+    XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
       XP.>*< XP.xpOption (xpElem "HMACOutputLength" XP.xpickle)
-      XP.>*< XP.xpTrees)
+      XP.>*< xpAnyCont)
 
 -- |§4.3.3
 data Reference = Reference
@@ -160,7 +160,7 @@ instance XP.XmlPickler TransformElement where
       Left s  <-> TransformElementXPath s
       Right x <-> TransformElement x |]
     XP.>$< (xpElem "XPath" XS.xpString
-      XP.>|< XP.xpTree)
+      XP.>|< xpTrimAnyElem)
 
 -- |§4.3.3.5
 data DigestMethod = DigestMethod
@@ -171,8 +171,8 @@ data DigestMethod = DigestMethod
 instance XP.XmlPickler DigestMethod where
   xpickle = xpElem "DigestMethod" $
     [XP.biCase|(a, d) <-> DigestMethod a d|]
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttr "Algorithm" XP.xpickle)
-      XP.>*< XP.xpList XP.xpTree)
+    XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
+      XP.>*< xpAnyCont)
 
 -- |§4.4
 data KeyInfo = KeyInfo
@@ -231,10 +231,10 @@ instance XP.XmlPickler KeyInfoElement where
       XP.>|< xpElem "PGPData"
               (XP.xpOption (xpElem "PGPKeyID" XS.xpBase64Binary)
         XP.>*< XP.xpOption (xpElem "PGPKeyPacket" XS.xpBase64Binary)
-        XP.>*< XP.xpTrees)
+        XP.>*< XP.xpList xpTrimAnyElem)
       XP.>|< xpElem "SPKIData" (xpList1 XP.xpickle)
       XP.>|< xpElem "MgmtData" XS.xpString
-      XP.>|< XP.xpTree) -- elem only
+      XP.>|< XP.xpTree)
 
 -- |§4.4.2
 data KeyValue
@@ -271,7 +271,7 @@ instance XP.XmlPickler KeyValue where
       XP.>|< xpElem "RSAKeyValue" 
               (xpElem "Modulus" xpCryptoBinary
         XP.>*< xpElem "Exponent" xpCryptoBinary)
-      XP.>|< XP.xpTree) -- elem only
+      XP.>|< XP.xpTree)
 
 -- |§4.4.4.1
 type X509DistinguishedName = XString
@@ -306,7 +306,7 @@ instance XP.XmlPickler X509Element where
       XP.>|< xpElem "X509SKI" XS.xpBase64Binary
       XP.>|< xpElem "X509Certificate" XS.xpBase64Binary
       XP.>|< xpElem "X509CRL" XS.xpBase64Binary
-      XP.>|< XP.xpTree) -- elem only
+      XP.>|< xpTrimAnyElem)
 
 -- |§4.4.6
 data SPKIElement
@@ -319,7 +319,7 @@ instance XP.XmlPickler SPKIElement where
       Left b <-> SPKISexp b
       Right x <-> SPKIElement x|]
     XP.>$<  (xpElem "SPKISexp" XS.xpBase64Binary
-      XP.>|< XP.xpTree) -- elem only
+      XP.>|< xpTrimAnyElem)
 
 -- |§4.5
 data Object = Object
@@ -332,9 +332,9 @@ data Object = Object
 instance XP.XmlPickler Object where
   xpickle = xpElem "Object" $
     [XP.biCase|(((i, m), e), x) <-> Object i m e x|] 
-    XP.>$< (XP.xpCheckEmptyAttributes (XP.xpAttrImplied "Id" XS.xpID
+    XP.>$< (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< XP.xpAttrImplied "MimeType" XS.xpString
-      XP.>*< XP.xpAttrImplied "Encoding" XP.xpickle)
+      XP.>*< XP.xpAttrImplied "Encoding" XP.xpickle
       XP.>*< XP.xpList XP.xpickle)
 
 data ObjectElement
@@ -353,7 +353,7 @@ instance XP.XmlPickler ObjectElement where
     XP.>$<  (XP.xpickle
       XP.>|< XP.xpickle
       XP.>|< XP.xpickle
-      XP.>|< XP.xpTree) -- elem only
+      XP.>|< XP.xpTree)
 
 -- |§5.1
 data Manifest = Manifest
