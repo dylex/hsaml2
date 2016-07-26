@@ -12,7 +12,7 @@ module SAML2.XML.Encryption where
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Schema as XS
-import qualified SAML2.XML.Signature as DS
+import qualified SAML2.XML.Signature.Schema as DS
 
 nsFrag :: String -> URI
 nsFrag = httpURI "www.w3.org" "/2001/04/xmlenc" "" . ('#':)

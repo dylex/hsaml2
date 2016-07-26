@@ -15,7 +15,7 @@ import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Schema as XS
 import qualified SAML2.XML.Encryption as XEnc
-import qualified SAML2.XML.Signature as DS
+import qualified SAML2.XML.Signature.Schema as DS
 import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 import SAML2.Core.Identifiers

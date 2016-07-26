@@ -46,6 +46,7 @@ library
   other-modules:
     SAML2.Lens
     SAML2.XML.Pickle
+    SAML2.XML.Signature.Schema
   build-depends:       
     base >=4.8 && <5,
     base64-bytestring,
