@@ -19,6 +19,7 @@ tests = U.test
       (SignedInfo Nothing
         (CanonicalizationMethod
           (Identified (CanonicalXML10 False))
+          Nothing
           [])
         (SignatureMethod
           (Identified SignatureDSA_SHA1)
@@ -30,6 +31,7 @@ tests = U.test
           (Just $ Transforms $
             Transform
               (Identified TransformBase64)
+              Nothing
               []
             :| [])
           (DigestMethod
@@ -42,6 +44,7 @@ tests = U.test
           (Just $ Transforms $
             Transform
               (Identified TransformBase64)
+              Nothing
               []
             :| [])
           (DigestMethod
@@ -76,6 +79,7 @@ tests = U.test
       (SignedInfo Nothing
         (CanonicalizationMethod 
           (Identified (CanonicalXML10 False))
+          Nothing
           [])
         (SignatureMethod 
           (Identified SignatureRSA_SHA1)
@@ -112,6 +116,7 @@ tests = U.test
       (SignedInfo Nothing
         (CanonicalizationMethod 
           (Identified (CanonicalXML10 False))
+          Nothing
           [])
         (SignatureMethod
           (Identified SignatureDSA_SHA1)

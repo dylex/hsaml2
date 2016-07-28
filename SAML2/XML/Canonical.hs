@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -7,13 +8,15 @@
 -- For <http://www.w3.org/TR/2008/REC-xmldsig-core-20080610/> §6.5
 module SAML2.XML.Canonical where
 
+import Control.Monad ((<=<))
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Builder as BSB
-import qualified Data.ByteString.Lazy as BSL
+import Data.Tree.Class (getChildren)
 import qualified Text.XML.HXT.Core as HXT
 
 import SAML2.XML
-import SAML2.XML.Lint (xmllintToString)
+import qualified SAML2.XML.LibXML2 as LibXML2
+import qualified SAML2.XML.Schema as XS
+import qualified SAML2.XML.Pickle as XP
 
 -- |§6.5
 data CanonicalizationAlgorithm
@@ -44,12 +47,21 @@ instance Identifiable URI CanonicalizationAlgorithm where
     , CanonicalXMLExcl10 True
     ]
 
+newtype InclusiveNamespaces = InclusiveNamespaces
+  { inclusiveNamespacesPrefixList :: XS.NMTOKENS
+  } deriving (Eq, Show)
+
+instance XP.XmlPickler InclusiveNamespaces where
+  xpickle = xpTrimElemNS (mkNamespace "ec" (httpURI "www.w3.org" "/2001/10/xml-exc-c14n" "" "#")) "InclusiveNamespaces" $
+    [XP.biCase|n <-> InclusiveNamespaces n|]
+    XP.>$< XP.xpAttr "PrefixList" XS.xpNMTOKENS
+
 -- |Canonicalize and serialize an XML document
 -- This currently just pipes out to xmllint -- there are a number of ways it could be improved.
-canonicalize :: CanonicalizationAlgorithm -> HXT.IOStateArrow s HXT.XmlTree BS.ByteString
-canonicalize a = (if canonicalWithComments a then HXT.this else HXT.removeAllComment)
-  HXT.>>> xmllintToString ['-':'-':xla a]
-  HXT.>>> HXT.arr (BSL.toStrict . BSB.toLazyByteString . BSB.stringUtf8) where
-  xla CanonicalXML10{} = "c14n"
-  xla CanonicalXML11{} = "c14n11"
-  xla CanonicalXMLExcl10{} = "exc-c14n"
+canonicalize :: CanonicalizationAlgorithm -> Maybe InclusiveNamespaces -> HXT.XmlTree -> IO BS.ByteString
+canonicalize a i =
+   LibXML2.c14n (cm a) (inclusiveNamespacesPrefixList <$> i) (canonicalWithComments a)
+     <=< LibXML2.fromXmlTrees . getChildren where
+  cm CanonicalXML10{} = LibXML2.C14N_1_0
+  cm CanonicalXML11{} = LibXML2.C14N_1_1
+  cm CanonicalXMLExcl10{} = LibXML2.C14N_EXCLUSIVE_1_0

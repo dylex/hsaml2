@@ -9,7 +9,7 @@ import Prelude hiding (String)
 
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Base64 as B64
-import Data.Char.Properties.XMLCharProps (isXmlSpaceChar)
+import Data.Char.Properties.XMLCharProps (isXmlSpaceChar, isXmlNameChar)
 import qualified Data.Time.Clock as Time
 import Data.Time.Format (formatTime, parseTimeM, defaultTimeLocale)
 import Data.Word (Word16)
@@ -70,6 +70,31 @@ xpAnyURI = XP.xpWrapEither
   ( maybe (Left "invalid anyURI") Right . URI.parseURIReference
   , \u -> URI.uriToString id u "")
   $ XP.xpText0DT (XPS.scDTxsd XSD.xsd_anyURI [])
+
+-- |§3.3.4
+type NMTOKEN = String
+
+isNMTOKEN :: String -> Bool
+isNMTOKEN [] = False
+isNMTOKEN s = all isXmlNameChar s
+
+xpNMTOKEN :: XP.PU NMTOKEN
+xpNMTOKEN = XP.xpWrapEither
+  ( \x -> if isNMTOKEN x then Right x else Left "NMTOKEN expected"
+  , id
+  ) $ XP.xpTextDT (XPS.scDTxsd XSD.xsd_NMTOKEN [])
+
+-- |§3.3.5
+type NMTOKENS = [NMTOKEN]
+
+xpNMTOKENS :: XP.PU NMTOKENS
+xpNMTOKENS = XP.xpWrapEither
+  ( \x -> case words x of
+      [] -> Left "NMTOKENS expected"
+      l | all isNMTOKEN l -> Right l
+      _ -> Left "NMTOKENS expected"
+  , unwords
+  ) $ XP.xpTextDT (XPS.scDTxsd XSD.xsd_NMTOKENS [])
 
 -- |§3.3.8
 type ID = String

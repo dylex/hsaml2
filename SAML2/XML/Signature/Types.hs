@@ -6,7 +6,7 @@
 -- XML Signature Syntax and Processing
 --
 -- <http://www.w3.org/TR/2008/REC-xmldsig-core-20080610/> (selected portions)
-module SAML2.XML.Signature.Schema where
+module SAML2.XML.Signature.Types where
 
 import Crypto.Number.Serialize (i2osp, os2ip)
 
@@ -79,13 +79,15 @@ instance XP.XmlPickler SignedInfo where
 -- |§4.3.1
 data CanonicalizationMethod = CanonicalizationMethod 
   { canonicalizationMethodAlgorithm :: IdentifiedURI C14N.CanonicalizationAlgorithm
+  , canonicalizationMethodInclusiveNamespaces :: Maybe C14N.InclusiveNamespaces
   , canonicalizationMethod :: Nodes
   } deriving (Eq, Show)
 
 instance XP.XmlPickler CanonicalizationMethod where
   xpickle = xpElem "CanonicalizationMethod" $
-    [XP.biCase|(a, x) <-> CanonicalizationMethod a x|] 
+    [XP.biCase|((a, n), x) <-> CanonicalizationMethod a n x|] 
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
+      XP.>*< XP.xpOption XP.xpickle
       XP.>*< xpAnyCont)
 
 -- |§4.3.2
@@ -133,13 +135,15 @@ instance XP.XmlPickler Transforms where
 
 data Transform = Transform
   { transformAlgorithm :: IdentifiedURI TransformAlgorithm
+  , transformInclusiveNamespaces :: Maybe C14N.InclusiveNamespaces
   , transform :: [TransformElement]
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Transform where
   xpickle = xpElem "Transform" $
-    [XP.biCase|(a, l) <-> Transform a l|]
+    [XP.biCase|((a, n), l) <-> Transform a n l|]
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
+      XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpList XP.xpickle)
 
 data TransformElement

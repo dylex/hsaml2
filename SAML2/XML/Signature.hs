@@ -3,7 +3,8 @@
 --
 -- <http://www.w3.org/TR/2008/REC-xmldsig-core-20080610/> (selected portions)
 module SAML2.XML.Signature
-  ( module SAML2.XML.Signature.Schema
+  ( module SAML2.XML.Signature.Types
+  , generateReference
   , SigningKey(..)
   , PublicKeys(..)
   , signingKeySignatureAlgorithm
@@ -14,34 +15,32 @@ module SAML2.XML.Signature
 import Control.Applicative ((<|>))
 import Control.Monad ((<=<))
 import Crypto.Number.Serialize (i2ospOf_, os2ip)
-import Crypto.Hash.Algorithms (SHA1(SHA1))
+import Crypto.Hash (hashlazy, SHA1(..), SHA256(..), SHA512(..), RIPEMD160(..))
 import qualified Crypto.PubKey.DSA as DSA
 import qualified Crypto.PubKey.RSA.Types as RSA
 import qualified Crypto.PubKey.RSA.PKCS15 as RSA
+import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List.NonEmpty as NonEmpty
-import Data.Maybe (listToMaybe)
 import Data.Monoid ((<>))
 import qualified Text.XML.HXT.Core as HXT
-import qualified Text.XML.HXT.Arrow.XmlState.RunIOStateArrow as RunHXT
 import qualified Text.XML.HXT.DOM.ShowXml as DOM
 
 import SAML2.XML
 import SAML2.XML.Canonical
-import SAML2.XML.Signature.Schema
+import SAML2.XML.Signature.Types
 
 applyTransformsBytes :: [Transform] -> BSL.ByteString -> IO BSL.ByteString
 applyTransformsBytes [] = return
 applyTransformsBytes (t : _) = fail ("applyTransformsBytes: unsupported Signature " ++ show t)
 
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
-applyTransformsXML (Transform (Identified (TransformCanonicalization c)) [] : tl) =
+applyTransformsXML (Transform (Identified (TransformCanonicalization c)) ins [] : tl) =
   applyTransformsBytes tl . BSL.fromStrict
-  <=< maybe (fail "applyTransformXML: canonicalization failed") return . listToMaybe . snd
-  <=< HXT.runIOSLA (canonicalize c) (RunHXT.initialState ())
-applyTransformsXML (Transform (Identified TransformEnvelopedSignature) [] : tl) =
+  <=< canonicalize c ins
+applyTransformsXML (Transform (Identified TransformEnvelopedSignature) Nothing [] : tl) =
   -- XXX assumes "this" signature in top-level
   applyTransformsXML tl
   . head . HXT.runLA (HXT.processChildren 
@@ -50,6 +49,23 @@ applyTransformsXML tl = applyTransformsBytes tl . DOM.xshowBlob . return
 
 applyTransforms :: Maybe Transforms -> HXT.XmlTree -> IO BSL.ByteString
 applyTransforms = applyTransformsXML . maybe [] (NonEmpty.toList . transforms)
+
+asType :: a -> proxy a -> proxy a
+asType _ = id
+
+applyDigest :: DigestMethod -> BSL.ByteString -> BS.ByteString
+applyDigest (DigestMethod (Identified DigestSHA1) []) = BA.convert . asType SHA1 . hashlazy
+applyDigest (DigestMethod (Identified DigestSHA256) []) = BA.convert . asType SHA256 . hashlazy
+applyDigest (DigestMethod (Identified DigestSHA512) []) = BA.convert . asType SHA512 . hashlazy
+applyDigest (DigestMethod (Identified DigestRIPEMD160) []) = BA.convert . asType RIPEMD160 . hashlazy
+applyDigest d = error $ "unsupported " ++ show d
+
+generateReference :: Reference -> HXT.XmlTree -> IO Reference
+generateReference r x = do
+  t <- applyTransforms (referenceTransforms r) x
+  let d = applyDigest (referenceDigestMethod r) t
+  return r
+    { referenceDigestValue = d }
 
 data SigningKey
   = SigningKeyDSA DSA.KeyPair

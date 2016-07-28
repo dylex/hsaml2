@@ -78,6 +78,7 @@ tests = U.test
         (readURI "http://example.org/pgpkeys/reagle.b64")
         (Transform
           (Identified TransformBase64)
+          Nothing
           []
         :| []))
       (Just $ EncryptionProperties Nothing $
