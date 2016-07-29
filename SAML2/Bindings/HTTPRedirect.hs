@@ -17,7 +17,7 @@ module SAML2.Bindings.HTTPRedirect
 
 import qualified Codec.Compression.Zlib.Raw as DEFLATE
 import Control.Applicative ((<|>))
-import Control.Lens ((^.), (.~), (<<.~))
+import Control.Lens ((^.), (.~))
 import Control.Monad (unless)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64.Lazy as Base64
@@ -64,7 +64,7 @@ encodeQuery sk p = case sk of
     sig <- DS.signBase64 k $ renderQuery False sq'
     return $ sq' ++ toQuery [(paramSignature, sig)]
   where
-  (ps, p') = SAMLP.samlProtocol' . $(fieldLens 'SAMLP.protocolSignature) <<.~ Nothing $ p
+  p' = SAMLP.samlProtocol' . $(fieldLens 'SAMLP.protocolSignature) .~ Nothing $ p
   pv = Base64.encode
     $ DEFLATE.compressWith DEFLATE.defaultCompressParams{ DEFLATE.compressLevel = DEFLATE.bestCompression }
     $ SAMLP.samlProtocolToXML p'

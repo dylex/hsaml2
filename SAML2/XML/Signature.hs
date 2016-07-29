@@ -1,3 +1,4 @@
+{-# LANGUAGE ViewPatterns #-}
 -- |
 -- XML Signature Syntax and Processing
 --
@@ -10,6 +11,7 @@ module SAML2.XML.Signature
   , signingKeySignatureAlgorithm
   , signBase64
   , verifyBase64
+  , generateSignature
   ) where
 
 import Control.Applicative ((<|>))
@@ -30,16 +32,21 @@ import qualified Text.XML.HXT.DOM.ShowXml as DOM
 
 import SAML2.XML
 import SAML2.XML.Canonical
+import qualified SAML2.XML.Pickle as XP
 import SAML2.XML.Signature.Types
+
+applyCanonicalization :: CanonicalizationMethod -> HXT.XmlTree -> IO BS.ByteString
+applyCanonicalization (CanonicalizationMethod (Identified a) ins []) = canonicalize a ins
+applyCanonicalization m = fail $ "applyCanonicalization: unsupported " ++ show m
 
 applyTransformsBytes :: [Transform] -> BSL.ByteString -> IO BSL.ByteString
 applyTransformsBytes [] = return
 applyTransformsBytes (t : _) = fail ("applyTransformsBytes: unsupported Signature " ++ show t)
 
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
-applyTransformsXML (Transform (Identified (TransformCanonicalization c)) ins [] : tl) =
+applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x : tl) =
   applyTransformsBytes tl . BSL.fromStrict
-  <=< canonicalize c ins
+  <=< applyCanonicalization (CanonicalizationMethod (Identified a) ins (map (XP.pickleDoc XP.xpickle) x))
 applyTransformsXML (Transform (Identified TransformEnvelopedSignature) Nothing [] : tl) =
   -- XXX assumes "this" signature in top-level
   applyTransformsXML tl
@@ -86,20 +93,49 @@ signingKeySignatureAlgorithm :: SigningKey -> SignatureAlgorithm
 signingKeySignatureAlgorithm (SigningKeyDSA _) = SignatureDSA_SHA1
 signingKeySignatureAlgorithm (SigningKeyRSA _) = SignatureRSA_SHA1
 
+signingKeyValue :: SigningKey -> KeyValue
+signingKeyValue (SigningKeyDSA (DSA.toPublicKey -> DSA.PublicKey p y)) = DSAKeyValue
+  { dsaKeyValuePQ = Just (DSA.params_p p, DSA.params_q p)
+  , dsaKeyValueG = Just (DSA.params_g p)
+  , dsaKeyValueY = y
+  , dsaKeyValueJ = Nothing
+  , dsaKeyValueSeedPgenCounter = Nothing
+  }
+signingKeyValue (SigningKeyRSA (RSA.toPublicKey -> RSA.PublicKey _ n e)) = RSAKeyValue
+  { rsaKeyValueModulus = n
+  , rsaKeyValueExponent = e
+  }
+
+signBytes :: SigningKey -> BS.ByteString -> IO BS.ByteString
+signBytes (SigningKeyDSA k) b = do
+  s <- DSA.sign (DSA.toPrivateKey k) SHA1 b
+  return $ i2ospOf_ 20 (DSA.sign_r s) <> i2ospOf_ 20 (DSA.sign_s s)
+signBytes (SigningKeyRSA k) b =
+  either (fail . show) return =<< RSA.signSafer (Just SHA1) (RSA.toPrivateKey k) b
+
+verifyBytes :: PublicKeys -> IdentifiedURI SignatureAlgorithm -> BS.ByteString -> BS.ByteString -> Maybe Bool
+verifyBytes PublicKeys{ publicKeyDSA = Just k } (Identified SignatureDSA_SHA1) sig m = Just $
+  BS.length sig == 40 &&
+  DSA.verify SHA1 k DSA.Signature{ DSA.sign_r = os2ip r, DSA.sign_s = os2ip s } m
+  where (r, s) = BS.splitAt 20 sig
+verifyBytes PublicKeys{ publicKeyRSA = Just k } (Identified SignatureRSA_SHA1) sig m = Just $
+  RSA.verify (Just SHA1) k m sig
+verifyBytes _ _ _ _ = Nothing
+
 signBase64 :: SigningKey -> BS.ByteString -> IO BS.ByteString
-signBase64 sk = fmap Base64.encode . signBytes sk where
-  signBytes (SigningKeyDSA k) b = do
-    s <- DSA.sign (DSA.toPrivateKey k) SHA1 b
-    return $ i2ospOf_ 20 (DSA.sign_r s) <> i2ospOf_ 20 (DSA.sign_s s)
-  signBytes (SigningKeyRSA k) b =
-    either (fail . show) return =<< RSA.signSafer (Just SHA1) (RSA.toPrivateKey k) b
+signBase64 sk = fmap Base64.encode . signBytes sk
 
 verifyBase64 :: PublicKeys -> IdentifiedURI SignatureAlgorithm -> BS.ByteString -> BS.ByteString -> Maybe Bool
-verifyBase64 pk alg m = either (const $ Just False) (verifyBytes pk alg) . Base64.decode where
-  verifyBytes PublicKeys{ publicKeyDSA = Just k } (Identified SignatureDSA_SHA1) sig = Just $
-    BS.length sig == 40 &&
-    DSA.verify SHA1 k DSA.Signature{ DSA.sign_r = os2ip r, DSA.sign_s = os2ip s } m
-    where (r, s) = BS.splitAt 20 sig
-  verifyBytes PublicKeys{ publicKeyRSA = Just k } (Identified SignatureRSA_SHA1) sig = Just $
-    RSA.verify (Just SHA1) k m sig
-  verifyBytes _ _ _ = Nothing
+verifyBase64 pk alg m = either (const $ Just False) (verifyBytes pk alg m) . Base64.decode where
+
+generateSignature :: SigningKey -> SignedInfo -> IO Signature
+generateSignature sk si = do
+  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) $ XP.pickleDoc XP.xpickle si
+  sv <- signBytes sk six
+  return Signature
+    { signatureId = Nothing
+    , signatureSignedInfo = si
+    , signatureSignatureValue = SignatureValue Nothing sv
+    , signatureKeyInfo = Just $ KeyInfo Nothing $ KeyInfoKeyValue (signingKeyValue sk) NonEmpty.:| []
+    , signatureObject = []
+    }
