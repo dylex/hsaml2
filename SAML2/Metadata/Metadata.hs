@@ -178,7 +178,7 @@ instance XP.XmlPickler Descriptors where
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpList1 (xpElem "AffiliateMember" xpEntityID)
-      XP.>*< XP.xpList (xpElem "KeyDescriptor" XP.xpickle)))
+      XP.>*< XP.xpList XP.xpickle))
 
 data Descriptor
   = Descriptor
@@ -248,7 +248,7 @@ instance XP.XmlPickler Descriptor where
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpList1 (xpElem "AssertionConsumerService" XP.xpickle)
-      XP.>*< XP.xpList (xpElem "AttributeConsumingService" XP.xpickle))
+      XP.>*< XP.xpList XP.xpickle)
     XP.>|<  xpElem "AuthnAuthorityDescriptor"
             (XP.xpickle
       XP.>*< xpList1 (xpElem "AuthnQueryService" XP.xpickle)
@@ -443,7 +443,7 @@ instance XP.XmlPickler AttributeConsumingService where
       XP.>*< XP.xpDefault False (XP.xpAttr "isDefault" XS.xpBoolean)
       XP.>*< xpList1 (xpElem "ServiceName" XP.xpickle)
       XP.>*< XP.xpList (xpElem "ServiceDescription" XP.xpickle)
-      XP.>*< xpList1 (xpElem "RequestedAttribute" XP.xpickle))
+      XP.>*< xpList1 XP.xpickle)
 
 -- |§2.4.4.1.1
 data RequestedAttribute = RequestedAttribute

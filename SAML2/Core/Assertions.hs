@@ -397,7 +397,7 @@ xpAttributeType = [XP.biCase|
     ((((n, f), u), x), v) <-> Attribute n f u x v|]
   XP.>$<  (XP.xpAttr "Name" XS.xpString
     XP.>*< XP.xpDefault (Identified AttributeNameFormatUnspecified) (XP.xpAttr "NameFormat" XP.xpickle)
-    XP.>*< XP.xpAttrImplied "FriedlyName" XS.xpString
+    XP.>*< XP.xpAttrImplied "FriendlyName" XS.xpString
     XP.>*< xpAnyAttrs
     XP.>*< XP.xpList (xpElem "AttributeValue" xpAny))
 

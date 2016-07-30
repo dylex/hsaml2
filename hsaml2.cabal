@@ -89,4 +89,5 @@ test-suite tests
     network-uri,
     semigroups,
     time,
-    HUnit
+    HUnit,
+    HUnit-Diff

@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 -- |
 -- XML Schema Datatypes
 --
@@ -7,7 +8,6 @@ module SAML2.XML.Schema.Datatypes where
 
 import Prelude hiding (String)
 
-import Control.Monad (liftM2)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Base64 as B64
 import Data.Char (isDigit)
@@ -17,7 +17,6 @@ import qualified Data.Time.Clock as Time
 import Data.Time.Format (formatTime, parseTimeM, defaultTimeLocale)
 import Data.Word (Word16)
 import qualified Network.URI as URI
-import qualified Text.ParserCombinators.ReadP as RP
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 import Text.XML.HXT.DOM.QualifiedName (isNCName)
 import qualified Text.XML.HXT.DOM.XmlNode as XN
@@ -50,41 +49,26 @@ type Duration = Time.NominalDiffTime
 
 xpDuration :: XP.PU Duration
 xpDuration = XP.xpWrapEither
-  ( prs
+  ( maybe (Left "invalid duration") (Right . realToFrac) . prd
   , \t -> (if signum t < 0 then ('-':) else id)
     $ 'P':'T': showFixed True (abs $ realToFrac t :: Pico) ++ "S"
   ) $ XP.xpTextDT $ XPS.scDTxsd XSD.xsd_duration [] where
-  prs s = case RP.readP_to_S rpp s of
-    [(t,"")] -> Right $ realToFrac (t :: Pico)
-    _:_:_ -> Left "ambiguous duration"
-    _ -> Left "invalid duration"
-  rpp = do
-    s <- RP.option '+' $ RP.satisfy (`elem` "+-")
-    _ <- RP.char 'P'
-    r <- rsum
-      [ rpu 31556952 'Y'
-      , rpu 2629746 'M'
-      , rpu 86400 'D'
-      , rp0 $ do
-        _ <- RP.char 'T'
-        rsum
-          [ rpu 3600 'H'
-          , rpu 60 'M'
-          , rp0 $ do
-            sv <- RP.munch1 isDigit
-            ss <- RP.option "" $ liftM2 (:) (RP.char '.') (RP.munch isDigit)
-            _ <- RP.char 'S'
-            return $ read (sv++ss)
-          ]
-      ]
-    return $ if s == '-' then negate r else r
-  rpu m u = rp0 $ do
-    v <- RP.munch1 isDigit
-    _ <- RP.char u
-    return $ m * read v
-  rp0 = RP.option 0
-  rsum [] = return 0
-  rsum (x:l) = liftM2 (+) x $ rsum l
+  prd ('-':s) = negate <$> prp s
+  prd ('+':s) = prp s
+  prd s = prp s
+  prp ('P':s) = pru (0 :: Pico) prt [('Y',31556952),('M',2629746),('D',86400)] s
+  prp _ = Nothing 
+  prt x "" = Just x
+  prt x ('T':s) = pru x prs [('H',3600),('M',60)] s
+  prt _ _ = Nothing
+  prs x "" = Just x
+  prs x s = case span isDigit s of
+    (d@(_:_),'.':(span isDigit -> (p,"S"))) -> Just $ x + read (d ++ '.' : p)
+    (d@(_:_),"S") -> Just $ x + read d
+    _ -> Nothing
+  pru x c ul s = case span isDigit s of
+    (d@(_:_),uc:sr) | (_,uv):ur <- dropWhile ((uc /=) . fst) ul -> pru (x + uv * read d) c ur sr
+    _ -> c x s
 
 -- |§3.2.7 theoretically allows timezones, but SAML2 does not use them
 type DateTime = Time.UTCTime
