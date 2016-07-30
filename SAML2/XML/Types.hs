@@ -32,3 +32,6 @@ mkNName ns n = HXT.mkQName (namespacePrefix ns) n (namespaceURI ns)
 httpURI :: String -> String -> String -> String -> URI
 httpURI host = URI "http:" $ Just $ URIAuth "" host ""
 
+xmlNS, xmlnsNS :: Namespace
+xmlNS = mkNamespace "xml" $ httpURI "www.w3.org" "/XML/1998/namespace" "" ""
+xmlnsNS = mkNamespace "xmlns" $ httpURI "www.w3.org" "/2000/xmlns/" "" ""

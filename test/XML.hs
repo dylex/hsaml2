@@ -1,6 +1,6 @@
 module XML
   ( testXML
-  , readURI
+  , uri
   , pickleElem
   ) where
 
@@ -22,8 +22,8 @@ testXML :: (Eq a, HXT.XmlPickler a, Show a) => String -> a -> U.Test
 testXML u a = U.TestCase $
   U.assertEqual u [Right a] =<< parseXML u
 
-readURI :: String -> URI
-readURI = fromJust . parseURIReference
+uri :: String -> URI
+uri = fromJust . parseURIReference
 
 pickleElem :: HXT.PU a -> a -> HXT.XmlTree
 pickleElem p = head . DOM.getChildren . HXT.pickleDoc p

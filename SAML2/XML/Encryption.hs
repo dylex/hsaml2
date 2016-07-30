@@ -55,14 +55,17 @@ data EncryptionMethod = EncryptionMethod
   , encryption :: Nodes
   } deriving (Eq, Show)
 
+xpEncryptionMethodType :: XP.PU EncryptionMethod
+xpEncryptionMethodType =
+  [XP.biCase|((((a, s), p), d), x) <-> EncryptionMethod a s p d x|] 
+  XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
+    XP.>*< XP.xpOption (xpElem "KeySize" XP.xpickle)
+    XP.>*< XP.xpOption (xpElem "OAEPparams" XS.xpBase64Binary)
+    XP.>*< XP.xpOption XP.xpickle
+    XP.>*< xpAnyCont)
+
 instance XP.XmlPickler EncryptionMethod where
-  xpickle = xpElem "EncryptionMethod" $
-    [XP.biCase|((((a, s), p), d), x) <-> EncryptionMethod a s p d x|] 
-    XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
-      XP.>*< XP.xpOption (xpElem "KeySize" XP.xpickle)
-      XP.>*< XP.xpOption (xpElem "OAEPparams" XS.xpBase64Binary)
-      XP.>*< XP.xpOption XP.xpickle
-      XP.>*< xpAnyCont)
+  xpickle = xpElem "EncryptionMethod" xpEncryptionMethodType
 
 -- |§3.3
 data CipherData

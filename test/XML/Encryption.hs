@@ -31,8 +31,8 @@ tests = U.test
       (Just $ KeyInfo Nothing
         (KeyName "Joseph"
         :| RetrievalMethod
-          (readURI "http://exmample.org/Reagle/PublicKey")
-          (Just $ readURI "http://www.w3.org/2001/04/xmlenc#EncryptedKey")
+          (uri "http://exmample.org/Reagle/PublicKey")
+          (Just $ uri "http://www.w3.org/2001/04/xmlenc#EncryptedKey")
           Nothing
         : KeyInfoElement (pickleElem XP.xpickle $ EncryptedKey
           (EncryptedType Nothing
@@ -50,15 +50,15 @@ tests = U.test
             Nothing)
           Nothing
           [ KeyReference
-            (readURI "http://exmample.org/foo2")
+            (uri "http://exmample.org/foo2")
             []
           , DataReference
-            (readURI "http://exmample.org/foo1")
+            (uri "http://exmample.org/foo1")
             []
           ]
           Nothing)
         : KeyInfoElement (pickleElem XP.xpickle $ AgreementMethod
-          (Unidentified (readURI "example:Agreement/Algorithm"))
+          (Unidentified (uri "example:Agreement/Algorithm"))
           (Just "foo")
           (Just $ DigestMethod
             (Identified DigestSHA1)
@@ -75,7 +75,7 @@ tests = U.test
             :| []))
         : []))
       (CipherReference
-        (readURI "http://example.org/pgpkeys/reagle.b64")
+        (uri "http://example.org/pgpkeys/reagle.b64")
         (Transform
           (Identified TransformBase64)
           Nothing
@@ -83,7 +83,7 @@ tests = U.test
         :| []))
       (Just $ EncryptionProperties Nothing $
         EncryptionProperty (Just "ep2")
-          (Just $ readURI "#eg1")
+          (Just $ uri "#eg1")
           [HXT.mkElement (HXT.mkNsName "p" "http://www.w3.org/1999/xhtml")
             []
             [HXT.mkText "This XML document tests the schema for ambigous content."]]

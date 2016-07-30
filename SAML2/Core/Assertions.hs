@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- |
 -- SAML Assertions
 --
@@ -14,8 +15,8 @@ import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Schema as XS
-import qualified SAML2.XML.Encryption as XEnc
 import qualified SAML2.XML.Signature.Types as DS
+import qualified SAML2.XML.Encryption as XEnc
 import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 import SAML2.Core.Identifiers
@@ -387,18 +388,21 @@ data Attribute = Attribute
   { attributeName :: XString
   , attributeNameFormat :: IdentifiedURI AttributeNameFormat
   , attributeFriendlyName :: Maybe XString
-  , attributeXML :: Nodes -- attributes
+  , attributeAttrs :: Nodes -- attributes
   , attributeValues :: [Nodes] -- ^§2.7.3.1.1
   } deriving (Eq, Show)
 
+xpAttributeType :: XP.PU Attribute
+xpAttributeType = [XP.biCase|
+    ((((n, f), u), x), v) <-> Attribute n f u x v|]
+  XP.>$<  (XP.xpAttr "Name" XS.xpString
+    XP.>*< XP.xpDefault (Identified AttributeNameFormatUnspecified) (XP.xpAttr "NameFormat" XP.xpickle)
+    XP.>*< XP.xpAttrImplied "FriedlyName" XS.xpString
+    XP.>*< xpAnyAttrs
+    XP.>*< XP.xpList (xpElem "AttributeValue" xpAny))
+
 instance XP.XmlPickler Attribute where
-  xpickle = xpElem "Attribute" $ [XP.biCase|
-      ((((n, f), u), v), x) <-> Attribute n f u x v|]
-    XP.>$<  (XP.xpAttr "Name" XS.xpString
-      XP.>*< XP.xpDefault (Identified AttributeNameFormatUnspecified) (XP.xpAttr "NameFormat" XP.xpickle)
-      XP.>*< XP.xpAttrImplied "FriedlyName" XS.xpString
-      XP.>*< XP.xpList (xpElem "AttributeValue" xpAny)
-      XP.>*< xpAnyAttrs)
+  xpickle = xpElem "Attribute" xpAttributeType
 
 -- |§2.7.3.2
 type EncryptedAttribute = EncryptedElement Attribute
@@ -449,8 +453,8 @@ instance XP.XmlPickler Action where
       XP.>*< XP.xpText0)
 
 -- |§2.7.4.3
-newtype Evidence = Evidence [AssertionRef]
-  deriving (Eq, Show)
+newtype Evidence = Evidence{ evidence :: [AssertionRef] }
+  deriving (Eq, Show, Monoid)
 
 instance XP.XmlPickler Evidence where
   xpickle = [XP.biCase|

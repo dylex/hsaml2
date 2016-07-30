@@ -43,6 +43,8 @@ library
     SAML2.Bindings.General
     SAML2.Bindings.Identifiers
     SAML2.Bindings.HTTPRedirect
+    SAML2.Metadata
+    SAML2.Metadata.Metadata
   other-modules:
     SAML2.Lens
     SAML2.XML.LibXML2

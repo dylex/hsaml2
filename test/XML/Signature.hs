@@ -26,7 +26,7 @@ tests = U.test
           Nothing
           [])
         (Reference Nothing
-          (Just $ readURI "http://www.w3.org/TR/xml-stylesheet/")
+          (Just $ uri "http://www.w3.org/TR/xml-stylesheet/")
           Nothing
           (Just $ Transforms $
             Transform
@@ -39,7 +39,7 @@ tests = U.test
             [])
           "\143\169p\199z\239\DLE\243\180\188\171L\186\158\rm\229n\242y"
         :| Reference Nothing
-          (Just $ readURI "http://www.w3.org/TR/REC-xml-names/")
+          (Just $ uri "http://www.w3.org/TR/REC-xml-names/")
           Nothing
           (Just $ Transforms $
             Transform
@@ -67,7 +67,7 @@ tests = U.test
         Nothing
         [ObjectSignatureProperties $ SignatureProperties Nothing
           (SignatureProperty Nothing
-            (readURI "#MyFirstSignature")
+            (uri "#MyFirstSignature")
             (HXT.mkElement (HXT.mkQName "ts" "timestamp" "http://www.example.org/rfc/rfcxxxx.txt")
               []
               [HXT.mkText "\n           this is a test of the mixed content model"]
@@ -86,7 +86,7 @@ tests = U.test
           Nothing
           [])
         (Reference Nothing
-          (Just $ readURI "http://www.w3.org/TR/xml-stylesheet")
+          (Just $ uri "http://www.w3.org/TR/xml-stylesheet")
           Nothing
           Nothing
           (DigestMethod 
@@ -123,7 +123,7 @@ tests = U.test
           Nothing
           [])
         (Reference Nothing
-          (Just $ readURI "http://www.w3.org/TR/xml-stylesheet")
+          (Just $ uri "http://www.w3.org/TR/xml-stylesheet")
           Nothing
           Nothing
           (DigestMethod

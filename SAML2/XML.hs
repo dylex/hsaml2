@@ -13,6 +13,7 @@ module SAML2.XML
   , xpAnyElem
   , xpTrimAnyElem
   , xpTrimElemNS
+  , xpXmlLang
   , IP, xpIP
   , Identified(..)
   , Identifiable(..)
@@ -64,6 +65,9 @@ xpTrimAnyElem = XP.xpWhitespace XP.*< xpAnyElem
 
 xpTrimElemNS :: Namespace -> String -> XP.PU a -> XP.PU a
 xpTrimElemNS ns n c = XP.xpWhitespace XP.*< XP.xpElemQN (mkNName ns n) (c XP.>* XP.xpWhitespace)
+
+xpXmlLang :: XP.PU XS.Language
+xpXmlLang = XP.xpAttrQN (mkNName xmlNS "lang") $ XS.xpLanguage
 
 type IP = XS.String
 
