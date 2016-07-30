@@ -90,4 +90,4 @@ test-suite tests
     semigroups,
     time,
     HUnit,
-    HUnit-Diff
+    HUnit-Diff > 0.1
