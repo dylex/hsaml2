@@ -21,6 +21,7 @@ import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 import SAML2.Core.Identifiers
 import qualified SAML2.Core.Assertions as SAML
+import SAML2.Bindings.Identifiers
 
 ns :: Namespace
 ns = mkNamespace "md" $ samlURN SAML20 ["metadata"]
@@ -36,7 +37,7 @@ xpEntityID = XS.xpAnyURI -- XXX maxLength=1024
 
 -- |§2.2.2
 data Endpoint = Endpoint
-  { endpointBinding :: AnyURI
+  { endpointBinding :: IdentifiedURI Binding
   , endpointLocation :: AnyURI
   , endpointResponseLocation :: Maybe AnyURI
   , endpointAttrs :: Nodes
@@ -46,7 +47,7 @@ data Endpoint = Endpoint
 instance XP.XmlPickler Endpoint where
   xpickle = [XP.biCase|
       ((((b, l), r), a), x) <-> Endpoint b l r a x|]
-    XP.>$<  (XP.xpAttr "Binding" XS.xpAnyURI
+    XP.>$<  (XP.xpAttr "Binding" XP.xpickle
       XP.>*< XP.xpAttr "Location" XS.xpAnyURI
       XP.>*< XP.xpAttrImplied "ResponseLocation" XS.xpAnyURI
       XP.>*< xpAnyAttrs

@@ -11,6 +11,7 @@ import qualified SAML2.XML.Encryption as XEnc
 import SAML2.Core.Identifiers
 import qualified SAML2.Core.Assertions as SAML
 import qualified SAML2.Core.Protocols as SAMLP
+import SAML2.Bindings.Identifiers
 import SAML2.Metadata.Metadata
 
 import XML
@@ -49,7 +50,7 @@ tests = U.test
           (SSODescriptor
             [IndexedEndpoint
               (Endpoint
-                (uri "urn:oasis:names:tc:SAML:2.0:bindings:SOAP")
+                (Identified BindingSOAP)
                 (uri "https://IdentityProvider.com/SAML/Artifact")
                 Nothing
                 []
@@ -57,13 +58,13 @@ tests = U.test
               0
               True]
             [Endpoint
-              (uri "urn:oasis:names:tc:SAML:2.0:bindings:SOAP")
+              (Identified BindingSOAP)
               (uri "https://IdentityProvider.com/SAML/SLO/SOAP")
               Nothing
               []
               []
             ,Endpoint
-              (uri "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect")
+              (Identified BindingHTTPRedirect)
               (uri "https://IdentityProvider.com/SAML/SLO/Browser")
               (Just $ uri "https://IdentityProvider.com/SAML/SLO/Response")
               []
@@ -74,13 +75,13 @@ tests = U.test
             ,Identified NameIDFormatTransient])
           True
           (Endpoint
-            (uri "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect")
+            (Identified BindingHTTPRedirect)
             (uri "https://IdentityProvider.com/SAML/SSO/Browser")
             Nothing
             []
             []
           :| [Endpoint
-            (uri "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST")
+            (Identified BindingHTTPPOST)
             (uri "https://IdentityProvider.com/SAML/SSO/Browser")
             Nothing
             []
@@ -125,14 +126,14 @@ tests = U.test
             Nothing
             [])
           (Endpoint
-            (uri "urn:oasis:names:tc:SAML:2.0:bindings:SOAP")
+            (Identified BindingSOAP)
             (uri "https://IdentityProvider.com/SAML/AA/SOAP")
             Nothing
             []
             []
           :| [])
           [Endpoint
-            (uri "urn:oasis:names:tc:SAML:2.0:bindings:URI")
+            (Identified BindingURI)
             (uri "https://IdentityProvider.com/SAML/AA/URI")
             Nothing
             []
@@ -213,13 +214,13 @@ tests = U.test
           (SSODescriptor
             []
             [Endpoint
-              (uri "urn:oasis:names:tc:SAML:2.0:bindings:SOAP")
+              (Identified BindingSOAP)
               (uri "https://ServiceProvider.com/SAML/SLO/SOAP")
               Nothing
               []
               []
             ,Endpoint
-              (uri "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect")
+              (Identified BindingHTTPRedirect)
               (uri "https://ServiceProvider.com/SAML/SLO/Browser")
               (Just $ uri "https://ServiceProvider.com/SAML/SLO/Response")
               []
@@ -230,7 +231,7 @@ tests = U.test
           False
           (IndexedEndpoint
             (Endpoint
-              (uri "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Artifact")
+              (Identified BindingHTTPArtifact)
               (uri "https://ServiceProvider.com/SAML/SSO/Artifact")
               Nothing
               []
@@ -239,7 +240,7 @@ tests = U.test
             True
           :| IndexedEndpoint
             (Endpoint
-              (uri "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST")
+              (Identified BindingHTTPPOST)
               (uri "https://ServiceProvider.com/SAML/SSO/POST")
               Nothing
               []
