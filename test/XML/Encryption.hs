@@ -21,7 +21,7 @@ tests = U.test
       Nothing
       Nothing
       (Just $ EncryptionMethod
-        (Identified KeyTransportRSAOAEP)
+        (Identified KeyTransportRSAOAEPMGF1P)
         (Just 256)
         (Just "\246U\174\221")
         (Just $ DigestMethod

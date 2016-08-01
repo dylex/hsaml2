@@ -6,7 +6,7 @@
 -- |
 -- XML Encryption Syntax and Processing
 --
--- <http://www.w3.org/TR/2002/REC-xmlenc-core-20021210/> (selected portions)
+-- <http://www.w3.org/TR/xmlenc-core1/> (selected portions)
 module SAML2.XML.Encryption where
 
 import SAML2.XML
@@ -163,12 +163,16 @@ instance XP.XmlPickler EncryptionProperty where
 
 -- |§5.1
 data EncryptionAlgorithm
-  = BlockEncryptionTripleDES -- ^§5.2.1
-  | BlockEncryptionAES128 -- ^§5.2.2
-  | BlockEncryptionAES256 -- ^§5.2.2
-  | BlockEncryptionAES192 -- ^§5.2.2
-  | KeyTransportRSA1_5 -- ^§5.4.1
-  | KeyTransportRSAOAEP -- ^§5.4.2
+  = BlockEncryptionTripleDES -- ^§5.2.2
+  | BlockEncryptionAES128 -- ^§5.2.3
+  | BlockEncryptionAES192 -- ^§5.2.3
+  | BlockEncryptionAES256 -- ^§5.2.3
+  | BlockEncryptionAES128GCM -- ^§5.2.4
+  | BlockEncryptionAES192GCM -- ^§5.2.4
+  | BlockEncryptionAES256GCM -- ^§5.2.4
+  | KeyTransportRSA1_5 -- ^§5.5.1
+  | KeyTransportRSAOAEPMGF1P -- ^§5.5.2
+  | KeyTransportRSAOAEP -- ^§5.5.2
   deriving (Eq, Bounded, Enum, Show)
 
 instance Identifiable URI EncryptionAlgorithm where
@@ -176,8 +180,12 @@ instance Identifiable URI EncryptionAlgorithm where
   identifier BlockEncryptionAES128 = nsFrag "aes128-cbc"
   identifier BlockEncryptionAES256 = nsFrag "aes256-cbc"
   identifier BlockEncryptionAES192 = nsFrag "aes192-cbc"
+  identifier BlockEncryptionAES128GCM = httpURI "www.w3.org" "/2009/xmlenc11" "" "#aes128-gcm"
+  identifier BlockEncryptionAES192GCM = httpURI "www.w3.org" "/2009/xmlenc11" "" "#aes192-gcm"
+  identifier BlockEncryptionAES256GCM = httpURI "www.w3.org" "/2009/xmlenc11" "" "#aes256-gcm"
   identifier KeyTransportRSA1_5 = nsFrag "rsa-1_5"
-  identifier KeyTransportRSAOAEP = nsFrag "rsa-oaep-mgf1p"
+  identifier KeyTransportRSAOAEPMGF1P = nsFrag "rsa-oaep-mgf1p"
+  identifier KeyTransportRSAOAEP = httpURI "www.w3.org" "/2009/xmlenc11" "" "#rsa-oaep"
 
 -- |§5.5
 data AgreementMethod = AgreementMethod
