@@ -43,12 +43,14 @@ library
     SAML2.Bindings.General
     SAML2.Bindings.Identifiers
     SAML2.Bindings.HTTPRedirect
+    SAML2.Bindings.HTTPPOST
     SAML2.Metadata
     SAML2.Metadata.Metadata
   other-modules:
     SAML2.Lens
     SAML2.XML.LibXML2
     SAML2.XML.Pickle
+    SAML2.Bindings.Internal
   c-sources:
     SAML2/XML/libxml2_stub.c
   build-depends:       

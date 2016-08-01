@@ -16,7 +16,6 @@ module SAML2.Bindings.HTTPRedirect
   ) where
 
 import qualified Codec.Compression.Zlib.Raw as DEFLATE
-import Control.Applicative ((<|>))
 import Control.Lens ((^.), (.~))
 import Control.Monad (unless)
 import qualified Data.ByteString as BS
@@ -37,6 +36,8 @@ import qualified SAML2.XML.Signature as DS
 import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
 import qualified SAML2.Core.Protocols as SAMLP
+import SAML2.Bindings.General
+import SAML2.Bindings.Internal
 
 data Encoding
   = EncodingDEFLATE
@@ -47,11 +48,10 @@ instance Identifiable URI Encoding where
     f EncodingDEFLATE = (SAML20, "DEFLATE")
 
 paramSAML :: Bool -> BS.ByteString
-paramSAML False = "SAMLRequest"
-paramSAML True = "SAMLResponse"
+paramSAML = protocolParameter
 
 paramRelayState, paramSignature, paramSignatureAlgorithm, paramEncoding :: BS.ByteString
-paramRelayState = "RelayState"
+paramRelayState = relayStateParameter
 paramSignature = "Signature"
 paramSignatureAlgorithm = "SigAlg"
 paramEncoding = "SAMLEncoding"
@@ -89,9 +89,7 @@ encodeHeaders sk p = do
 
 decodeURI :: forall a . SAMLP.SAMLProtocol a => DS.PublicKeys -> URI -> IO a
 decodeURI pk ru = do
-  pq <- case SAMLP.isSAMLResponse_ (Proxy :: Proxy a) of
-    Nothing -> maybe (fail "SAWL param missing") return $ ql (paramSAML False) <|> ql (paramSAML True)
-    Just resp -> let pn = paramSAML resp in maybe (fail $ BSC.unpack pn ++ " missing") return $ ql pn
+  pq <- maybe (fail "SAWL parameter missing") return $ lookupProtocolParameter (Proxy :: Proxy a) ql
   pd <- case enc of
     Identified EncodingDEFLATE ->
       return $ DEFLATE.decompress $ Base64.decodeLenient $ BSL.fromStrict $ fst pq
