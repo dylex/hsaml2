@@ -5,7 +5,7 @@
 -- |
 -- XML Signature Syntax and Processing
 --
--- <http://www.w3.org/TR/2008/REC-xmldsig-core-20080610/> (selected portions)
+-- <http://www.w3.org/TR/xmldsig-core1/> (selected portions)
 module SAML2.XML.Signature.Types where
 
 import Crypto.Number.Serialize (i2osp, os2ip)
@@ -399,14 +399,18 @@ instance Identifiable URI EncodingAlgorithm where
 -- |§6.2
 data DigestAlgorithm
   = DigestSHA1 -- ^§6.2.1
-  | DigestSHA256 -- ^xmlenc §5.7.2
-  | DigestSHA512 -- ^xmlenc §5.7.3
+  | DigestSHA224 -- ^§6.2.2
+  | DigestSHA256 -- ^§6.2.3
+  | DigestSHA384 -- ^§6.2.4
+  | DigestSHA512 -- ^§6.2.5
   | DigestRIPEMD160 -- ^xmlenc §5.7.4
   deriving (Eq, Bounded, Enum, Show)
 
 instance Identifiable URI DigestAlgorithm where
   identifier DigestSHA1 = nsFrag "sha1"
+  identifier DigestSHA224 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#sha224"
   identifier DigestSHA256 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha256"
+  identifier DigestSHA384 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#sha384"
   identifier DigestSHA512 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#sha512"
   identifier DigestRIPEMD160 = httpURI "www.w3.org" "/2001/04/xmlenc" "" "#ripemd160"
 
@@ -421,12 +425,32 @@ instance Identifiable URI MACAlgorithm where
 -- |§6.4
 data SignatureAlgorithm
   = SignatureDSA_SHA1
+  | SignatureDSA_SHA256
   | SignatureRSA_SHA1
+  | SignatureRSA_SHA224
+  | SignatureRSA_SHA256
+  | SignatureRSA_SHA384
+  | SignatureRSA_SHA512
+  | SignatureECDSA_SHA1
+  | SignatureECDSA_SHA224
+  | SignatureECDSA_SHA256
+  | SignatureECDSA_SHA384
+  | SignatureECDSA_SHA512
   deriving (Eq, Bounded, Enum, Show)
 
 instance Identifiable URI SignatureAlgorithm where
   identifier SignatureDSA_SHA1 = nsFrag "dsa-sha1"
+  identifier SignatureDSA_SHA256 = httpURI "www.w3.org" "/2009/xmldsig11" "" "#dsa-sha256"
   identifier SignatureRSA_SHA1 = nsFrag "rsa-sha1"
+  identifier SignatureRSA_SHA224 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#rsa-sha224"
+  identifier SignatureRSA_SHA256 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#rsa-sha256"
+  identifier SignatureRSA_SHA384 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#rsa-sha384"
+  identifier SignatureRSA_SHA512 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#rsa-sha512"
+  identifier SignatureECDSA_SHA1   = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#ecdsa-sha1"
+  identifier SignatureECDSA_SHA224 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#ecdsa-sha224"
+  identifier SignatureECDSA_SHA256 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#ecdsa-sha256"
+  identifier SignatureECDSA_SHA384 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#ecdsa-sha384"
+  identifier SignatureECDSA_SHA512 = httpURI "www.w3.org" "/2001/04/xmldsig-more" "" "#ecdsa-sha512"
 
 -- |§6.6
 data TransformAlgorithm
