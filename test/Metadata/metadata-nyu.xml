@@ -1,0 +1,114 @@
+<EntityDescriptor entityID="urn:mace:incommon:nyu.edu"
+	xmlns="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+	xmlns:shibmd="urn:mace:shibboleth:metadata:1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<IDPSSODescriptor
+		protocolSupportEnumeration="urn:mace:shibboleth:1.0 urn:oasis:names:tc:SAML:1.1:protocol urn:oasis:names:tc:SAML:2.0:protocol">
+		<Extensions>
+			<shibmd:Scope regexp="false">nyu.edu</shibmd:Scope>
+		</Extensions>
+		<KeyDescriptor use="signing">
+			<ds:KeyInfo>
+				<ds:X509Data>
+					<!-- Serial No. 124, expires on Wed Jan 16 23:23:03 2008 GMT -->
+					<ds:X509Certificate>
+						MIIGTTCCBTWgAwIBAgIBfDANBgkqhkiG9w0BAQUFADBWMQswCQYDVQQGEwJVUzEc
+						MBoGA1UEChMTSW5Db21tb24gRmVkZXJhdGlvbjEpMCcGA1UEAxMgSW5Db21tb24g
+						Q2VydGlmaWNhdGlvbiBBdXRob3JpdHkwHhcNMDcwMTE2MjMyMzAzWhcNMDgwMTE2
+						MjMyMzAzWjA4MQswCQYDVQQGEwJVUzEMMAoGA1UEChMDTllVMRswGQYDVQQDExJz
+						aGliYm9sZXRoLm55dS5lZHUwggG4MIIBLAYHKoZIzjgEATCCAR8CgYEA/X9TgR11
+						EilS30qcLuzk5/YRt1I870QAwx4/gLZRJmlFXUAiUftZPY1Y+r/F9bow9subVWzX
+						gTuAHTRv8mZgt2uZUKWkn5/oBHsQIsJPu6nX/rfGG/g7V+fGqKYVDwT7g/bTxR7D
+						AjVUE1oWkTL2dfOuK2HXKu/yIgMZndFIAccCFQCXYFCPFSMLzLKSuYKi64QL8Fgc
+						9QKBgQD34aCF1ps93su8q1w2uFe5eZSvu/o66oL5V0wLPQeCZ1FZV4661FlP5nEH
+						EIGAtEkWcSPoTCgWE7fPCTKMyKbhPBZ6i1R8jSjgo64eK7OmdZFuo38L+iE1YvH7
+						YnoBJDvMpPG+qFGQiaiD3+Fa5Z8GkotmXoB7VSVkAUw7/s9JKgOBhQACgYEA5GK+
+						eV3YuyfbTeJXnqV4jT+Ocz7XCL4TmeYApcuA/tG7vRRKl2Oyo93VCe7GxwOAFyp2
+						ajqxdzB/yB/Mcz80GELz/UE6vkA9CW315gHQ+zWImUbPxdp5vfoe1wZ7WmXDRN5+
+						4SDptlKBPsZBatAJhBjJOkWL/z09dyRdg+YYXcGjggKsMIICqDAOBgNVHQ8BAf8E
+						BAMCBaAwDAYDVR0TAQH/BAIwADAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUH
+						AwIwHQYDVR0OBBYEFInR3E2yLHtThH/xcXn8RjPAFno4MH4GA1UdIwR3MHWAFJMt
+						yGEYrWPjm2Wznd2Nk7rnymNFoVqkWDBWMQswCQYDVQQGEwJVUzEcMBoGA1UEChMT
+						SW5Db21tb24gRmVkZXJhdGlvbjEpMCcGA1UEAxMgSW5Db21tb24gQ2VydGlmaWNh
+						dGlvbiBBdXRob3JpdHmCAQAwgboGCCsGAQUFBwEBBIGtMIGqMIGnBggrBgEFBQcw
+						AoaBmmh0dHA6Ly9pbmNvbW1vbmNhMS5pbmNvbW1vbmZlZGVyYXRpb24ub3JnL2Jy
+						aWRnZS9jZXJ0cy9jYS1jZXJ0cy5wN2IKCQlDQSBJc3N1ZXJzIC0gVVJJOmh0dHA6
+						Ly9pbmNvbW1vbmNhMi5pbmNvbW1vbmZlZGVyYXRpb24ub3JnL2JyaWRnZS9jZXJ0
+						cy9jYS1jZXJ0cy5wN2IwgY0GA1UdHwSBhTCBgjA/oD2gO4Y5aHR0cDovL2luY29t
+						bW9uY3JsMS5pbmNvbW1vbmZlZGVyYXRpb24ub3JnL2NybC9lZWNybHMuY3JsMD+g
+						PaA7hjlodHRwOi8vaW5jb21tb25jcmwyLmluY29tbW9uZmVkZXJhdGlvbi5vcmcv
+						Y3JsL2VlY3Jscy5jcmwwXgYDVR0gBFcwVTBTBgsrBgEEAa4jAQQBATBEMEIGCCsG
+						AQUFBwIBFjZodHRwOi8vaW5jb21tb25jYS5pbmNvbW1vbmZlZGVyYXRpb24ub3Jn
+						L3ByYWN0aWNlcy5wZGYwHQYDVR0RBBYwFIISc2hpYmJvbGV0aC5ueXUuZWR1MA0G
+						CSqGSIb3DQEBBQUAA4IBAQCtTu3zFQro8ocJP9jfnJe7LQwvC+8W0n/AxJnkoadA
+						WXvL6sWU/FoTg48ppe6A4LFmZ8SZIq/7Neo6SfvUkhT+O9mArnjZJ6XAu/cH0fD/
+						KBAkUhkEQlltSy1PT2Apor/ti20IV6ycXJPc4AVBh7X/mKpZ646CWnHvoiPUqPAi
+						zjxkx0TmosaL+2IVA8/Vd2FXp+cJLJgoXMSDeTs2nfj90+hNE5GE9shRf6lJlpdV
+						4nVc74u6E0RwoCe/76Uruk9VzciLSiJwEj/kuFPfg93s1K5w1xyslmtdxYd6HbEx
+						NGqVSO5aqZjOpoF5O/Kp39NX1iv08yjLUGus10UlK5Bx
+					</ds:X509Certificate>
+				</ds:X509Data>
+			</ds:KeyInfo>
+		</KeyDescriptor>
+		<KeyDescriptor use="signing">
+			<ds:KeyInfo>
+				<ds:X509Data>
+					<!-- Serial No. 10202320263211693109, expires on Mon Aug 8 21:35:16 
+						2022 GMT -->
+					<ds:X509Certificate>
+						MIIE6DCCA9CgAwIBAgIJAI2V7DmlgLQ1MA0GCSqGSIb3DQEBBQUAMIGoMQswCQYD
+						VQQGEwJVUzERMA8GA1UECBMITmV3IFlvcmsxETAPBgNVBAcTCE5ldyBZb3JrMRww
+						GgYDVQQKExNOZXcgWW9yayBVbml2ZXJzaXR5MQwwCgYDVQQLEwNJVFMxIjAgBgNV
+						BAMTGXVybjptYWNlOmluY29tbW9uOm55dS5lZHUxIzAhBgkqhkiG9w0BCQEWFGlk
+						bS5zZXJ2aWNlc0BueXUuZWR1MB4XDTEyMDgxMDIxMzUxNloXDTIyMDgwODIxMzUx
+						NlowgagxCzAJBgNVBAYTAlVTMREwDwYDVQQIEwhOZXcgWW9yazERMA8GA1UEBxMI
+						TmV3IFlvcmsxHDAaBgNVBAoTE05ldyBZb3JrIFVuaXZlcnNpdHkxDDAKBgNVBAsT
+						A0lUUzEiMCAGA1UEAxMZdXJuOm1hY2U6aW5jb21tb246bnl1LmVkdTEjMCEGCSqG
+						SIb3DQEJARYUaWRtLnNlcnZpY2VzQG55dS5lZHUwggEiMA0GCSqGSIb3DQEBAQUA
+						A4IBDwAwggEKAoIBAQDfb4botPJTcMPCLDenzHqWAOJFenUGEAL33ROzA687b73F
+						g72Fnlh2Pp7HNhbB3+cQjsQODitjFdUVQgX8EAP3xMZAGKU2M/0ZGfnGokj5oiU0
+						80ii6zOzEDUCkulR5CW6p+mgdoCYXs3b9riwm1X5pqi/4ZbCKP+K6TiSBOGWxtCs
+						Bp7mWFdJlWUT6a3VRdoYmUUQEOJfrTyT8CW0dk0DGToWe2j3taxGT89E3VA6w5Gk
+						tQK5sxllEAVQ23fiMdouDAtr4gDNvOSwtYUuDwh/Ppl/lAMwjU+dv08pNuJR9drF
+						jYM0jKoiPsG9AdEwkFSGQb0IB1wt8+wAeTCXIKMrAgMBAAGjggERMIIBDTAdBgNV
+						HQ4EFgQUleQurEqBxsOHqhL90hCiWMKIvx0wgd0GA1UdIwSB1TCB0oAUleQurEqB
+						xsOHqhL90hCiWMKIvx2hga6kgaswgagxCzAJBgNVBAYTAlVTMREwDwYDVQQIEwhO
+						ZXcgWW9yazERMA8GA1UEBxMITmV3IFlvcmsxHDAaBgNVBAoTE05ldyBZb3JrIFVu
+						aXZlcnNpdHkxDDAKBgNVBAsTA0lUUzEiMCAGA1UEAxMZdXJuOm1hY2U6aW5jb21t
+						b246bnl1LmVkdTEjMCEGCSqGSIb3DQEJARYUaWRtLnNlcnZpY2VzQG55dS5lZHWC
+						CQCNlew5pYC0NTAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBBQUAA4IBAQDC7w4Z
+						zk/qgpNhmee03UxGOixlFn+UaY6QEdjBIO3O3m20hEWLp4Pa+TBvsSlsFWQh1Wlf
+						ngZfgK/MjZykdg0+bGwRT9JMcZbg9xeuznOCEenuTMJtDriquzTlN6ms2emelgBe
+						fiQOpDC/hsX3Hr0miTgVq6xb3mRxUpMSRFAQqgkmV403fQ+kd8FcsSy1jjS5XLwX
+						iB30XNuA1VE0HlWs4l4DV1G/24Jc1Hr7iUyiZMfZlZkEuju7POrmxtU0RZ00Dyis
+						tzuHg2kl7HlTBftOs8FDxM3sqityZScutQmvMe6NCy/3nSFyHCQFPfu66bycssYG
+						R+4YvtjCZRUas5kS
+					</ds:X509Certificate>
+				</ds:X509Data>
+			</ds:KeyInfo>
+		</KeyDescriptor>
+		<SingleSignOnService Binding="urn:mace:shibboleth:1.0:profiles:AuthnRequest"
+			Location="https://shibboleth.nyu.edu/idp/profile/Shibboleth/SSO" />
+		<SingleSignOnService
+			Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+			Location="https://shibboleth.nyu.edu/idp/profile/SAML2/Redirect/SSO" />
+		<SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+			Location="https://shibboleth.nyu.edu/idp/profile/SAML2/POST/SSO" />
+	</IDPSSODescriptor>
+	<Organization>
+		<OrganizationName xml:lang="en">New York University</OrganizationName>
+		<OrganizationDisplayName xml:lang="en">New York University</OrganizationDisplayName>
+		<OrganizationURL xml:lang="en">http://www.nyu.edu/</OrganizationURL>
+	</Organization>
+	<ContactPerson contactType="technical">
+		<GivenName>Yavor Yanakiev</GivenName>
+		<EmailAddress>yy27@nyu.edu</EmailAddress>
+	</ContactPerson>
+	<ContactPerson contactType="technical">
+		<GivenName>Tracy Edappara</GivenName>
+		<EmailAddress>tte3@nyu.edu</EmailAddress>
+	</ContactPerson>
+	<ContactPerson contactType="administrative">
+		<GivenName>Gary Chapman</GivenName>
+		<EmailAddress>gwc1@nyu.edu</EmailAddress>
+	</ContactPerson>
+</EntityDescriptor>

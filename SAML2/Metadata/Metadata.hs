@@ -198,8 +198,8 @@ data Descriptor
   | SPSSODescriptor
     { descriptorRole :: !RoleDescriptor
     , descriptorSSO :: !SSODescriptor
-    , descriptorAuthnRequestsSigned :: Bool
-    , descriptorWantAssertionsSigned :: Bool
+    , descriptorAuthnRequestsSigned :: XS.Boolean
+    , descriptorWantAssertionsSigned :: XS.Boolean
     , descriptorAssertionConsumerService :: List1 IndexedEndpoint
     , descriptorAttributeConsumingService :: [AttributeConsumingService]
     } -- ^§2.4.4
