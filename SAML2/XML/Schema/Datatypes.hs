@@ -149,6 +149,10 @@ xpNCName = XP.xpWrapEither
 xpID :: XP.PU ID
 xpID = xpNCName{ XP.theSchema = XPS.scDTxsd XSD.xsd_ID [] }
 
+-- |§3.3.13
+xpInteger :: XP.PU Integer
+xpInteger = XP.xpPrim{ XP.theSchema = XPS.scDTxsd XSD.xsd_integer [] }
+
 -- |§3.3.20
 type NonNegativeInteger = Word
 
@@ -160,3 +164,13 @@ type UnsignedShort = Word16
 
 xpUnsignedShort :: XP.PU UnsignedShort
 xpUnsignedShort = XP.xpPrim{ XP.theSchema = XPS.scDTxsd XSD.xsd_unsignedShort [] }
+
+-- |§3.3.20
+type PositiveInteger = NonNegativeInteger
+
+xpPositiveInteger :: XP.PU PositiveInteger
+xpPositiveInteger = XP.xpWrapEither
+  ( \x -> if x > 0 then Right x else Left "0 is not positive"
+  , id
+  ) $ XP.xpPrim{ XP.theSchema = XPS.scDTxsd XSD.xsd_positiveInteger [] }
+
