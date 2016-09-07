@@ -37,5 +37,5 @@ decodeValue = either fail return . SAMLP.samlXMLToProtocol . BSL.fromStrict . Ba
 
 decodeForm :: forall a . (SAMLP.SAMLProtocol a) => (BS.ByteString -> Maybe BS.ByteString) -> IO a
 decodeForm f = do
-  p <- decodeValue =<< maybe (fail "SAWL parameter missing") return (lookupProtocolParameter (Proxy :: Proxy a) f)
+  p <- decodeValue =<< maybe (fail "SAML parameter missing") return (lookupProtocolParameter (Proxy :: Proxy a) f)
   return $ SAMLP.samlProtocol' . $(fieldLens 'SAMLP.relayState) .~ (f relayStateParameter) $ p

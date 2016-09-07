@@ -89,7 +89,7 @@ encodeHeaders sk p = do
 
 decodeURI :: forall a . SAMLP.SAMLProtocol a => DS.PublicKeys -> URI -> IO a
 decodeURI pk ru = do
-  pq <- maybe (fail "SAWL parameter missing") return $ lookupProtocolParameter (Proxy :: Proxy a) ql
+  pq <- maybe (fail "SAML parameter missing") return $ lookupProtocolParameter (Proxy :: Proxy a) ql
   pd <- case enc of
     Identified EncodingDEFLATE ->
       return $ DEFLATE.decompress $ Base64.decodeLenient $ BSL.fromStrict $ fst pq
