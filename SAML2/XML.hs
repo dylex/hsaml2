@@ -24,6 +24,7 @@ module SAML2.XML
   ) where
 
 import Control.Monad.State.Class (state)
+import Data.Default (Default(..))
 import qualified Data.Invertible as Inv
 import Data.List (partition)
 import Network.URI (URI)
@@ -78,6 +79,9 @@ data Identified b a
   = Identified !a
   | Unidentified !b
   deriving (Eq, Show)
+
+instance Default a => Default (Identified b a) where
+  def = Identified def
 
 class Eq b => Identifiable b a | a -> b where
   identifier :: a -> b

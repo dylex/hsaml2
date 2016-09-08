@@ -7,6 +7,8 @@
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §8
 module SAML2.Core.Identifiers where
 
+import Data.Default (Default(..))
+
 import SAML2.XML
 import SAML2.Core.Namespaces
 import SAML2.Core.Versioning
@@ -52,6 +54,9 @@ data NameIDFormat
   | NameIDFormatEncrypted -- ^§3.4.1.1: only for NameIDPolicy
   deriving (Eq, Enum, Bounded, Show)
   
+instance Default NameIDFormat where
+  def = NameIDFormatUnspecified
+
 instance Identifiable URI NameIDFormat where
   identifier = samlURNIdentifier "nameid-format" . f where
     f NameIDFormatUnspecified = (SAML11, "unspecified")
@@ -74,6 +79,9 @@ data Consent
   | ConsentUnavailable -- ^§8.4.6
   | ConsentInapplicable -- ^§8.4.7
   deriving (Eq, Enum, Bounded, Show)
+
+instance Default Consent where
+  def = ConsentUnspecified
 
 instance Identifiable URI Consent where
   identifier = samlURNIdentifier "consent" . f where
