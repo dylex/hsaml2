@@ -27,6 +27,7 @@ import SAML2.Core.Versioning
 import qualified SAML2.Core.Assertions as SAML
 import SAML2.Core.Identifiers
 import SAML2.Bindings.General (RelayState)
+import SAML2.Bindings.Identifiers
 
 ns :: Namespace
 ns = mkNamespace "samlp" $ samlURN SAML20 ["protocol"]
@@ -381,7 +382,7 @@ data AssertionConsumerService
   = AssertionConsumerServiceIndex XS.UnsignedShort
   | AssertionConsumerServiceURL
     { authnRequestAssertionConsumerServiceURL :: Maybe AnyURI
-    , authnRequestProtocolBinding :: Maybe AnyURI -- TODO
+    , authnRequestProtocolBinding :: Maybe (IdentifiedURI Binding)
     }
   deriving (Eq, Show)
 
@@ -394,7 +395,7 @@ instance XP.XmlPickler AuthnRequest where
       XP.>*< XP.xpDefault False (XP.xpAttr "IsPassive" XS.xpBoolean)
       XP.>*<  (XP.xpAttr "AssertionConsumerServiceIndex" XS.xpUnsignedShort
         XP.>|<  (XP.xpAttrImplied "AssertionConsumerServiceURL" XS.xpAnyURI
-          XP.>*< XP.xpAttrImplied "ProtocolBinding" XS.xpAnyURI))
+          XP.>*< XP.xpAttrImplied "ProtocolBinding" XP.xpickle))
       XP.>*< XP.xpAttrImplied "AttributeConsumingServiceIndex" XS.xpUnsignedShort
       XP.>*< XP.xpAttrImplied "ProviderName" XS.xpString
       XP.>*< XP.xpOption XP.xpickle
@@ -637,7 +638,7 @@ data AnyRequest
   | RequestAuthnQuery           !AuthnQuery 
   | RequestAttributeQuery       !AttributeQuery 
   | RequestAuthzDecisionQuery   !AuthzDecisionQuery 
-  | RequestAuthnRequest         !AuthnRequest 
+  | RequestAuthnRequest         !AuthnRequest
   | RequestArtifactResolve      !ArtifactResolve 
   | RequestManageNameIDRequest  !ManageNameIDRequest 
   | RequestLogoutRequest        !LogoutRequest 
