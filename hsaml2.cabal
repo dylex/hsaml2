@@ -22,6 +22,7 @@ source-repository head
 
 library
   exposed-modules:
+    SAML2
     SAML2.XML
     SAML2.XML.Schema
     SAML2.XML.Schema.Datatypes
