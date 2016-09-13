@@ -19,13 +19,14 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe (maybeToList)
 import Data.Proxy (Proxy(..))
 
+import SAML2.XML
 import SAML2.Lens
 import qualified SAML2.Core.Protocols as SAMLP
 import SAML2.Bindings.General
 import SAML2.Bindings.Internal
 
 encodeValue :: SAMLP.SAMLProtocol a => a -> BS.ByteString
-encodeValue = Base64.encode . BSL.toStrict . SAMLP.samlProtocolToXML
+encodeValue = Base64.encode . BSL.toStrict . samlToXML
 
 encodeForm :: SAMLP.SAMLProtocol a => a -> [(BS.ByteString, BS.ByteString)]
 encodeForm p =
@@ -33,7 +34,7 @@ encodeForm p =
   : maybeToList ((relayStateParameter, ) <$> SAMLP.relayState (p ^. SAMLP.samlProtocol'))
 
 decodeValue :: SAMLP.SAMLProtocol a => BS.ByteString -> IO a
-decodeValue = either fail return . SAMLP.samlXMLToProtocol . BSL.fromStrict . Base64.decodeLenient
+decodeValue = either fail return . xmlToSAML . BSL.fromStrict . Base64.decodeLenient
 
 decodeForm :: forall a . (SAMLP.SAMLProtocol a) => (BS.ByteString -> Maybe BS.ByteString) -> IO a
 decodeForm f = do

@@ -20,14 +20,15 @@ type QName = HXT.QName
 
 data Namespace = Namespace
   { namespacePrefix :: !String
-  , namespaceURI :: !String
+  , namespaceURI :: !URI
+  , namespaceURIString :: !String
   }
 
 mkNamespace :: String -> URI -> Namespace
-mkNamespace p u = Namespace p $ uriToString id u ""
+mkNamespace p u = Namespace p u $ uriToString id u ""
 
 mkNName :: Namespace -> String -> QName
-mkNName ns n = HXT.mkQName (namespacePrefix ns) n (namespaceURI ns)
+mkNName ns n = HXT.mkQName (namespacePrefix ns) n (namespaceURIString ns)
 
 httpURI :: String -> String -> String -> String -> URI
 httpURI host = URI "http:" $ Just $ URIAuth "" host ""

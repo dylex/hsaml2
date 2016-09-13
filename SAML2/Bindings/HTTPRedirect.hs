@@ -67,7 +67,7 @@ encodeQuery sk p = case sk of
   p' = SAMLP.samlProtocol' . $(fieldLens 'SAMLP.protocolSignature) .~ Nothing $ p
   pv = Base64.encode
     $ DEFLATE.compressWith DEFLATE.defaultCompressParams{ DEFLATE.compressLevel = DEFLATE.bestCompression }
-    $ SAMLP.samlProtocolToXML p'
+    $ samlToXML p'
   sq = toQuery $ 
     (paramSAML $ SAMLP.isSAMLResponse p, BSL.toStrict pv)
     : maybeToList ((paramRelayState, ) <$> SAMLP.relayState (p' ^. SAMLP.samlProtocol'))
@@ -94,7 +94,7 @@ decodeURI pk ru = do
     Identified EncodingDEFLATE ->
       return $ DEFLATE.decompress $ Base64.decodeLenient $ BSL.fromStrict $ fst pq
     _ -> fail $ "Unsupported HTTP redirect encoding: " ++ show enc
-  p <- either fail return $ SAMLP.samlXMLToProtocol pd
+  p <- either fail return $ xmlToSAML pd
   case ql paramSignatureAlgorithm of
     Just (sav, sas) -> do
       sigres $ DS.verifyBase64 pk (reidentify $ puri sav)

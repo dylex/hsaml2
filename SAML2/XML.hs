@@ -21,15 +21,19 @@ module SAML2.XML
   , xpIdentified
   , xpIdentifier
   , IdentifiedURI
+  , samlToXML
+  , xmlToSAML
   ) where
 
 import Control.Monad.State.Class (state)
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Default (Default(..))
 import qualified Data.Invertible as Inv
 import Data.List (partition)
 import Network.URI (URI)
-import qualified Text.XML.HXT.DOM.TypeDefs as HXT
-import qualified Text.XML.HXT.DOM.XmlNode as HXT
+import qualified Text.XML.HXT.Core as HXT
+import qualified Text.XML.HXT.DOM.XmlNode as HX
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as SC
 
 import SAML2.XML.Types
@@ -53,11 +57,11 @@ xpAnyAttrs = XP.PU
 
 -- |Any content and attributes
 xpAny :: XP.PU HXT.XmlTrees
-xpAny = (uncurry (++) Inv.:<->: partition HXT.isAttr) XP.>$< (xpAnyAttrs XP.>*< xpAnyCont)
+xpAny = (uncurry (++) Inv.:<->: partition HX.isAttr) XP.>$< (xpAnyAttrs XP.>*< xpAnyCont)
 
 xpAnyElem :: XP.PU HXT.XmlTree
 xpAnyElem = XP.xpWrapEither 
-  ( \e -> if HXT.isElem e then Right e else Left "xpAnyElem: any element expected"
+  ( \e -> if HX.isElem e then Right e else Left "xpAnyElem: any element expected"
   , id
   ) XP.xpTree
 
@@ -114,3 +118,21 @@ type IdentifiedURI = Identified URI
 
 instance Identifiable URI a => XP.XmlPickler (Identified URI a) where
   xpickle = xpIdentified XS.xpAnyURI
+
+samlToXML :: XP.XmlPickler a => a -> BSL.ByteString
+samlToXML = XP.pickleDoc XP.xpickle
+  HXT.>>> HXT.runLA (HXT.xshowBlob (HXT.getChildren
+    HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs))
+  HXT.>>> BSL.concat
+
+xmlToSAML :: XP.XmlPickler a => BSL.ByteString -> Either String a
+xmlToSAML = foldr (je . XP.unpickleDoc' XP.xpickle) (Left "invalid XML")
+  . HXT.runLA
+    (HXT.xreadDoc
+    -- HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
+    HXT.>>> HXT.propagateNamespaces
+    HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
+  . BSLC.unpack -- XXX encoding?
+  where
+  je x (Left _) = x
+  je _ x = x

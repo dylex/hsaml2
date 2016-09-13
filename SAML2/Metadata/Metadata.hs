@@ -327,7 +327,7 @@ instance Identifiable XString ContactType where
   identifier ContactTypeBilling         = "billing"
   identifier ContactTypeOther           = "other"
 instance XP.XmlPickler ContactType where
-  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURI ns) "ContactTypeType" [])) "ContactTypeType"
+  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURIString ns) "ContactTypeType" [])) "ContactTypeType"
 
 -- |§2.3.2.3
 data AdditionalMetadataLocation = AdditionalMetadataLocation
@@ -375,7 +375,7 @@ instance XP.XmlPickler RoleDescriptor where
     xpAnyURIList = XP.xpWrapEither
       ( mapM (maybe (Left "invalid anyURI") Right . URI.parseURIReference) . words
       , tail . foldr ((.) (' ':) . URI.uriToString id) ""
-      ) $ XP.xpTextDT $ XPS.scDT (namespaceURI ns) "anyURIListType" []
+      ) $ XP.xpTextDT $ XPS.scDT (namespaceURIString ns) "anyURIListType" []
 
 -- |§2.4.1.1
 data KeyDescriptor = KeyDescriptor
@@ -409,7 +409,7 @@ instance Identifiable XString KeyTypes where
   identifier KeyTypeBoth        = ""
   identifiedValues = [KeyTypeEncryption, KeyTypeSigning]
 instance XP.XmlPickler KeyTypes where
-  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURI ns) "KeyTypes" [])) "KeyTypes"
+  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURIString ns) "KeyTypes" [])) "KeyTypes"
 
 -- |§2.4.2
 data SSODescriptor = SSODescriptor

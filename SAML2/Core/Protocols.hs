@@ -10,11 +10,8 @@
 module SAML2.Core.Protocols where
 
 import Control.Lens (Lens', lens, (.~), (^.))
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy, asProxyTypeOf)
-import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
 import SAML2.Lens
@@ -67,24 +64,6 @@ class XP.XmlPickler a => SAMLProtocol a where
   isSAMLResponse :: a -> Bool
   isSAMLResponse_ :: Proxy a -> Maybe Bool
   isSAMLResponse_ = Just . isSAMLResponse . asProxyTypeOf undefined 
-
-samlProtocolToXML :: SAMLProtocol a => a -> BSL.ByteString
-samlProtocolToXML = XP.pickleDoc XP.xpickle
-  HXT.>>> HXT.runLA (HXT.xshowBlob (HXT.getChildren
-    HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs))
-  HXT.>>> BSL.concat
-
-samlXMLToProtocol :: SAMLProtocol a => BSL.ByteString -> Either String a
-samlXMLToProtocol = foldr (je . XP.unpickleDoc' XP.xpickle) (Left "invalid XML")
-  . HXT.runLA
-    (HXT.xreadDoc
-    -- HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
-    HXT.>>> HXT.propagateNamespaces
-    HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
-  . BSLC.unpack -- XXX encoding?
-  where
-  je x (Left _) = x
-  je _ x = x
 
 -- |§3.2.1
 newtype RequestAbstractType = RequestAbstractType
@@ -304,7 +283,7 @@ instance Identifiable XString AuthnContextComparisonType where
   identifier ComparisonMaximum = "maximum"
   identifier ComparisonBetter = "better"
 instance XP.XmlPickler AuthnContextComparisonType where
-  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURI ns) "AuthnContextComparisonType" [])) "AuthnContextComparisonType"
+  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURIString ns) "AuthnContextComparisonType" [])) "AuthnContextComparisonType"
 
 -- |§3.3.2.3
 data AttributeQuery = AttributeQuery

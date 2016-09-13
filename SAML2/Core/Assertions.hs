@@ -441,7 +441,7 @@ instance Identifiable XString DecisionType where
   identifier DecisionTypeDeny = "Deny"
   identifier DecisionTypeIndeterminate = "Indeterminate"
 instance XP.XmlPickler DecisionType where
-  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURI ns) "DecisionType" [])) "DecisionType"
+  xpickle = xpIdentifier (XP.xpTextDT (XPS.scDT (namespaceURIString ns) "DecisionType" [])) "DecisionType"
 
 -- |§2.7.4.2
 data Action = Action
