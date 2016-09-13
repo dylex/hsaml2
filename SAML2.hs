@@ -7,8 +7,11 @@ module SAML2
   , module SAML2.Core
     -- * Bindings
   , module SAML2.Bindings
+    -- * Metadata
+  , module SAML2.Metadata
   ) where
 
 import SAML2.XML
 import SAML2.Core
 import SAML2.Bindings
+import SAML2.Metadata
