@@ -130,10 +130,12 @@ samlToXML = XP.pickleDoc XP.xpickle
 xmlToDoc :: BSL.ByteString -> Maybe HXT.XmlTree
 xmlToDoc = listToMaybe . HXT.runLA
   (HXT.xreadDoc
+  HXT.>>> HXT.removeWhiteSpace
+  HXT.>>> HXT.neg HXT.isXmlPi
   -- HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
   HXT.>>> HXT.propagateNamespaces
   HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
   . BSLC.unpack -- XXX encoding?
 
 xmlToSAML :: XP.XmlPickler a => BSL.ByteString -> Either String a
-xmlToSAML = maybe (Left "invalid XML") (XP.unpickleDoc' XP.xpickle) . xmlToDoc
+xmlToSAML = maybe (Left "invalid XML") (XP.unpickleDoc' XP.xpickle)  . xmlToDoc

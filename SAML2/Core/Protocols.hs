@@ -61,7 +61,7 @@ instance XP.XmlPickler ProtocolType where
 
 instance DS.Signable ProtocolType where
   signature' = $(fieldLens 'protocolSignature)
-class (XP.XmlPickler a, DS.Signable a) => SAMLProtocol a where
+class (XP.XmlPickler a, DS.Signable a, Show a) => SAMLProtocol a where
   samlProtocol' :: Lens' a ProtocolType
   isSAMLResponse :: a -> Bool
   isSAMLResponse_ :: Proxy a -> Maybe Bool
