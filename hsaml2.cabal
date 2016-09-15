@@ -38,6 +38,7 @@ library
     SAML2.Core.Assertions
     SAML2.Core.Protocols
     SAML2.Core.Versioning
+    SAML2.Core.Signature
     SAML2.Core.Identifiers
     SAML2.Profiles
     SAML2.Profiles.ConfirmationMethod

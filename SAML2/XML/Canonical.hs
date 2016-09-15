@@ -57,7 +57,6 @@ instance XP.XmlPickler InclusiveNamespaces where
     XP.>$< XP.xpAttr "PrefixList" XS.xpNMTOKENS
 
 -- |Canonicalize and serialize an XML document
--- This currently just pipes out to xmllint -- there are a number of ways it could be improved.
 canonicalize :: CanonicalizationAlgorithm -> Maybe InclusiveNamespaces -> HXT.XmlTree -> IO BS.ByteString
 canonicalize a i =
    LibXML2.c14n (cm a) (inclusiveNamespacesPrefixList <$> i) (canonicalWithComments a)

@@ -22,6 +22,7 @@ module SAML2.XML
   , xpIdentifier
   , IdentifiedURI
   , samlToXML
+  , xmlToDoc
   , xmlToSAML
   ) where
 
@@ -31,6 +32,7 @@ import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Default (Default(..))
 import qualified Data.Invertible as Inv
 import Data.List (partition)
+import Data.Maybe (listToMaybe)
 import Network.URI (URI)
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.DOM.XmlNode as HX
@@ -125,14 +127,13 @@ samlToXML = XP.pickleDoc XP.xpickle
     HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs))
   HXT.>>> BSL.concat
 
-xmlToSAML :: XP.XmlPickler a => BSL.ByteString -> Either String a
-xmlToSAML = foldr (je . XP.unpickleDoc' XP.xpickle) (Left "invalid XML")
-  . HXT.runLA
-    (HXT.xreadDoc
-    -- HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
-    HXT.>>> HXT.propagateNamespaces
-    HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
+xmlToDoc :: BSL.ByteString -> Maybe HXT.XmlTree
+xmlToDoc = listToMaybe . HXT.runLA
+  (HXT.xreadDoc
+  -- HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
+  HXT.>>> HXT.propagateNamespaces
+  HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
   . BSLC.unpack -- XXX encoding?
-  where
-  je x (Left _) = x
-  je _ x = x
+
+xmlToSAML :: XP.XmlPickler a => BSL.ByteString -> Either String a
+xmlToSAML = maybe (Left "invalid XML") (XP.unpickleDoc' XP.xpickle) . xmlToDoc

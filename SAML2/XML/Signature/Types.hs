@@ -101,6 +101,9 @@ instance XP.XmlPickler CanonicalizationMethod where
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< xpAnyCont)
 
+simpleCanonicalization :: C14N.CanonicalizationAlgorithm -> CanonicalizationMethod
+simpleCanonicalization a = CanonicalizationMethod (Identified a) Nothing []
+
 -- |§4.4.2
 data SignatureMethod = SignatureMethod
   { signatureMethodAlgorithm :: IdentifiedURI SignatureAlgorithm
@@ -157,6 +160,9 @@ instance XP.XmlPickler Transform where
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpList XP.xpickle)
 
+simpleTransform :: TransformAlgorithm -> Transform
+simpleTransform a = Transform (Identified a) Nothing []
+
 data TransformElement
   = TransformElementXPath XString
   | TransformElement Node 
@@ -180,6 +186,9 @@ instance XP.XmlPickler DigestMethod where
     [XP.biCase|(a, d) <-> DigestMethod a d|]
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
       XP.>*< xpAnyCont)
+
+simpleDigest :: DigestAlgorithm -> DigestMethod
+simpleDigest a = DigestMethod (Identified a) []
 
 -- |§4.5
 data KeyInfo = KeyInfo

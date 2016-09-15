@@ -22,6 +22,7 @@ import Data.Proxy (Proxy(..))
 import SAML2.XML
 import SAML2.Lens
 import qualified SAML2.Core.Protocols as SAMLP
+import SAML2.Core.Signature
 import SAML2.Bindings.General
 import SAML2.Bindings.Internal
 
@@ -33,10 +34,14 @@ encodeForm p =
   (protocolParameter (SAMLP.isSAMLResponse p), encodeValue p)
   : maybeToList ((relayStateParameter, ) <$> SAMLP.relayState (p ^. SAMLP.samlProtocol'))
 
-decodeValue :: SAMLP.SAMLProtocol a => BS.ByteString -> IO a
-decodeValue = either fail return . xmlToSAML . BSL.fromStrict . Base64.decodeLenient
+decodeValue :: SAMLP.SAMLProtocol a => Bool -> BS.ByteString -> IO a
+decodeValue verf v = do
+  if verf
+    then verifySAMLProtocol b
+    else either fail return $ xmlToSAML b
+  where b = BSL.fromStrict $ Base64.decodeLenient v
 
-decodeForm :: forall a . (SAMLP.SAMLProtocol a) => (BS.ByteString -> Maybe BS.ByteString) -> IO a
-decodeForm f = do
-  p <- decodeValue =<< maybe (fail "SAML parameter missing") return (lookupProtocolParameter (Proxy :: Proxy a) f)
+decodeForm :: forall a . (SAMLP.SAMLProtocol a) => Bool -> (BS.ByteString -> Maybe BS.ByteString) -> IO a
+decodeForm verf f = do
+  p <- decodeValue verf =<< maybe (fail "SAML parameter missing") return (lookupProtocolParameter (Proxy :: Proxy a) f)
   return $ SAMLP.samlProtocol' . $(fieldLens 'SAMLP.relayState) .~ (f relayStateParameter) $ p

@@ -12,10 +12,12 @@ module SAML2.XML.Signature
   , signBase64
   , verifyBase64
   , generateSignature
+  , verifySignature
   ) where
 
 import Control.Applicative ((<|>))
 import Control.Monad ((<=<))
+import Crypto.Number.Basic (numBytes)
 import Crypto.Number.Serialize (i2ospOf_, os2ip)
 import Crypto.Hash (hashlazy, SHA1(..), SHA256(..), SHA512(..), RIPEMD160(..))
 import qualified Crypto.PubKey.DSA as DSA
@@ -27,6 +29,8 @@ import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Monoid ((<>))
+import qualified Data.X509 as X509
+import Network.URI (URI(..))
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.DOM.ShowXml as DOM
 
@@ -41,7 +45,7 @@ applyCanonicalization m = fail $ "applyCanonicalization: unsupported " ++ show m
 
 applyTransformsBytes :: [Transform] -> BSL.ByteString -> IO BSL.ByteString
 applyTransformsBytes [] = return
-applyTransformsBytes (t : _) = fail ("applyTransformsBytes: unsupported Signature " ++ show t)
+applyTransformsBytes (t : _) = fail ("applyTransforms: unsupported Signature " ++ show t)
 
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
 applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x : tl) =
@@ -74,6 +78,15 @@ generateReference r x = do
   return r
     { referenceDigestValue = d }
 
+verifyReference :: Reference -> HXT.XmlTree -> IO (Bool, Bool)
+verifyReference r src = case referenceURI r of
+  Just URI{ uriScheme = "", uriAuthority = Nothing, uriPath = "", uriQuery = "", uriFragment = '#':xid }
+    | [x] <- HXT.runLA (HXT.deep $ hasId xid) src -> do
+    t <- applyTransforms (referenceTransforms r) x
+    return (applyDigest (referenceDigestMethod r) t == referenceDigestValue r, not $ null $ HXT.runLA (hasId xid) src)
+  _ -> return (False, False)
+  where hasId = HXT.hasAttrValue "ID" . (==)
+
 data SigningKey
   = SigningKeyDSA DSA.KeyPair
   | SigningKeyRSA RSA.KeyPair
@@ -105,6 +118,22 @@ signingKeyValue (SigningKeyRSA (RSA.toPublicKey -> RSA.PublicKey _ n e)) = RSAKe
   { rsaKeyValueModulus = n
   , rsaKeyValueExponent = e
   }
+
+publicKeyValues :: KeyValue -> PublicKeys
+publicKeyValues DSAKeyValue{ dsaKeyValuePQ = Just (p, q), dsaKeyValueG = Just g, dsaKeyValueY = y } = mempty
+  { publicKeyDSA = Just $ DSA.PublicKey
+    { DSA.public_params = DSA.Params
+      { DSA.params_p = p
+      , DSA.params_q = q
+      , DSA.params_g = g
+      }
+    , DSA.public_y = y
+    }
+  }
+publicKeyValues RSAKeyValue{ rsaKeyValueModulus = n, rsaKeyValueExponent = e } = mempty
+  { publicKeyRSA = Just $ RSA.PublicKey (numBytes n) n e
+  }
+publicKeyValues _ = mempty
 
 signBytes :: SigningKey -> BS.ByteString -> IO BS.ByteString
 signBytes (SigningKeyDSA k) b = do
@@ -139,3 +168,20 @@ generateSignature sk si = do
     , signatureKeyInfo = Just $ KeyInfo Nothing $ KeyInfoKeyValue (signingKeyValue sk) NonEmpty.:| []
     , signatureObject = []
     }
+
+verifySignature :: PublicKeys -> Signature -> HXT.XmlTree -> IO (Maybe Bool)
+verifySignature pks sig@Signature{ signatureSignedInfo = siginfo } msg = do
+  six <- applyCanonicalization (signedInfoCanonicalizationMethod siginfo) $ XP.pickleDoc XP.xpickle siginfo
+  rl <- mapM (`verifyReference` msg) (signedInfoReference siginfo)
+  return $ ((all fst rl && any snd rl) &&)
+    <$> verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod siginfo) six (signatureValue $ signatureSignatureValue sig)
+  where
+  keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo sig)
+  keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
+  keyinfo (X509Data l) = foldMap keyx509d l
+  keyinfo _ = mempty
+  keyx509d (X509Certificate sc) = keyx509p $ X509.certPubKey $ X509.getCertificate sc
+  keyx509d _ = mempty
+  keyx509p (X509.PubKeyRSA r) = mempty{ publicKeyRSA = Just r }
+  keyx509p (X509.PubKeyDSA d) = mempty{ publicKeyDSA = Just d }
+  keyx509p _ = mempty
