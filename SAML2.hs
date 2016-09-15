@@ -2,8 +2,7 @@
 -- OASIS Security Assertion Markup Language (SAML) V2.0
 --
 module SAML2
-  ( NonEmpty(..)
-  , Identified(..)
+  ( Identified(..)
   , namespaceURI
   , samlToXML
   , xmlToSAML
@@ -15,7 +14,6 @@ module SAML2
   , module SAML2.Metadata
   ) where
 
-import Data.List.NonEmpty (NonEmpty(..))
 import SAML2.XML
 import SAML2.Core
 import SAML2.Bindings

@@ -8,6 +8,7 @@
 -- <http://www.w3.org/TR/xmldsig-core1/> (selected portions)
 module SAML2.XML.Signature.Types where
 
+import Control.Lens (Lens')
 import Crypto.Number.Serialize (i2osp, os2ip)
 import qualified Data.X509 as X509
 
@@ -58,6 +59,9 @@ instance XP.XmlPickler Signature where
       XP.>*< XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpList XP.xpickle)
+
+class Signable a where
+  signature' :: Lens' a (Maybe Signature)
 
 -- |§4.3
 data SignatureValue = SignatureValue

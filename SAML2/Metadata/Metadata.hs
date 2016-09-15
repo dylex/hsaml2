@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -12,6 +13,7 @@ module SAML2.Metadata.Metadata where
 import qualified Network.URI as URI
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
+import SAML2.Lens
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Schema as XS
@@ -139,6 +141,9 @@ instance XP.XmlPickler Metadata where
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpList1 XP.xpickle))
+
+instance DS.Signable Metadata where
+  signature' = $(fieldLens 'metadataSignature)
 
 -- |§2.3.1 empty list means missing
 newtype Extensions = Extensions{ extensions :: Nodes }
@@ -376,6 +381,9 @@ instance XP.XmlPickler RoleDescriptor where
       ( mapM (maybe (Left "invalid anyURI") Right . URI.parseURIReference) . words
       , tail . foldr ((.) (' ':) . URI.uriToString id) ""
       ) $ XP.xpTextDT $ XPS.scDT (namespaceURIString ns) "anyURIListType" []
+
+instance DS.Signable RoleDescriptor where
+  signature' = $(fieldLens 'roleDescriptorSignature)
 
 -- |§2.4.1.1
 data KeyDescriptor = KeyDescriptor

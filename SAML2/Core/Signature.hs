@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 -- |
 -- SAML and XML Signature Syntax and Processing
 --
@@ -14,7 +13,6 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Network.URI (URI(uriFragment), nullURI)
 
-import SAML2.Lens
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Canonical as C14N
@@ -32,6 +30,7 @@ signSAMLProtocol sk m = do
       :| DS.simpleTransform (DS.TransformCanonicalization $ C14N.CanonicalXMLExcl10 False)
       : []
     , DS.referenceDigestMethod = DS.simpleDigest DS.DigestSHA1
+    , DS.referenceDigestValue = error "signSAMLProtocol: referenceDigestValue"
     } $ XP.pickleDoc XP.xpickle m
   s' <- DS.generateSignature sk $ maybe DS.SignedInfo
     { DS.signedInfoId = Nothing
@@ -43,7 +42,7 @@ signSAMLProtocol sk m = do
       }
     , DS.signedInfoReference = r :| []
     } DS.signatureSignedInfo $ SAMLP.protocolSignature p
-  return $ SAMLP.samlProtocol' . $(fieldLens 'SAMLP.protocolSignature) .~ Just s' $ m
+  return $ DS.signature' .~ Just s' $ m
   where
   p = m ^. SAMLP.samlProtocol'
 
@@ -51,6 +50,6 @@ verifySAMLProtocol :: SAMLP.SAMLProtocol a => BSL.ByteString -> IO a
 verifySAMLProtocol b = do
   x <- maybe (fail "invalid XML") return $ xmlToDoc b
   m <- either fail return $ XP.unpickleDoc' XP.xpickle x
-  v <- maybe (return Nothing) (DS.verifySignature mempty `flip` x) $ SAMLP.protocolSignature $ m ^. SAMLP.samlProtocol'
+  v <- maybe (return Nothing) (DS.verifySignature mempty `flip` x) $ m ^. DS.signature'
   unless (or v) $ fail "verifySAMLProtocol: invalid or missing signature"
   return m

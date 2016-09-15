@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -12,6 +13,7 @@ module SAML2.Core.Assertions where
 
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
+import SAML2.Lens
 import SAML2.XML
 import qualified SAML2.XML.Pickle as XP
 import qualified SAML2.XML.Schema as XS
@@ -166,6 +168,9 @@ instance XP.XmlPickler Assertion where
       XP.>*< XP.xpOption XP.xpickle
       XP.>*< XP.xpOption (xpElem "Advice" $ XP.xpList XP.xpickle)
       XP.>*< XP.xpList XP.xpickle)
+
+instance DS.Signable Assertion where
+  signature' = $(fieldLens 'assertionSignature)
 
 data AssertionStatement
   = AssertionStatement Statement
