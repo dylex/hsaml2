@@ -49,7 +49,7 @@ signSAMLProtocol sk m = do
 verifySAMLProtocol :: SAMLP.SAMLProtocol a => BSL.ByteString -> IO a
 verifySAMLProtocol b = do
   x <- maybe (fail "invalid XML") return $ xmlToDoc b
-  m <- either fail return $ XP.unpickleDoc' XP.xpickle x
+  m <- either fail return $ docToSAML x
   v <- maybe (return Nothing) (DS.verifySignature mempty `flip` x) $ m ^. DS.signature'
   unless (or v) $ fail "verifySAMLProtocol: invalid or missing signature"
   return m

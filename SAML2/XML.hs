@@ -21,9 +21,12 @@ module SAML2.XML
   , xpIdentified
   , xpIdentifier
   , IdentifiedURI
+  , samlToDoc
   , samlToXML
-  , xmlToDoc
+  , docToSAML
+  , docToXML
   , xmlToSAML
+  , xmlToDoc
   ) where
 
 import Control.Monad.State.Class (state)
@@ -121,21 +124,29 @@ type IdentifiedURI = Identified URI
 instance Identifiable URI a => XP.XmlPickler (Identified URI a) where
   xpickle = xpIdentified XS.xpAnyURI
 
+samlToDoc :: XP.XmlPickler a => a -> HXT.XmlTree
+samlToDoc = head
+  . HXT.runLA (HXT.processChildren $ HXT.cleanupNamespaces HXT.collectPrefixUriPairs)
+  . XP.pickleDoc XP.xpickle
+
+docToXML :: HXT.XmlTree -> BSL.ByteString
+docToXML = BSL.concat . HXT.runLA (HXT.xshowBlob HXT.getChildren)
+
 samlToXML :: XP.XmlPickler a => a -> BSL.ByteString
-samlToXML = XP.pickleDoc XP.xpickle
-  HXT.>>> HXT.runLA (HXT.xshowBlob (HXT.getChildren
-    HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs))
-  HXT.>>> BSL.concat
+samlToXML = docToXML . samlToDoc
 
 xmlToDoc :: BSL.ByteString -> Maybe HXT.XmlTree
 xmlToDoc = listToMaybe . HXT.runLA
   (HXT.xreadDoc
   HXT.>>> HXT.removeWhiteSpace
-  HXT.>>> HXT.neg HXT.isXmlPi
-  -- HXT.>>> HXT.removeDocWhiteSpace -- XXX insufficient?
-  HXT.>>> HXT.propagateNamespaces
-  HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.none `HXT.when` HXT.isNamespaceDeclAttr)))
+  HXT.>>> HXT.neg HXT.isXmlPi)
   . BSLC.unpack -- XXX encoding?
 
+docToSAML :: XP.XmlPickler a => HXT.XmlTree -> Either String a
+docToSAML = XP.unpickleDoc' XP.xpickle
+  . head
+  . HXT.runLA (HXT.propagateNamespaces
+      HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.neg HXT.isNamespaceDeclAttr)))
+
 xmlToSAML :: XP.XmlPickler a => BSL.ByteString -> Either String a
-xmlToSAML = maybe (Left "invalid XML") (XP.unpickleDoc' XP.xpickle)  . xmlToDoc
+xmlToSAML = maybe (Left "invalid XML") docToSAML . xmlToDoc

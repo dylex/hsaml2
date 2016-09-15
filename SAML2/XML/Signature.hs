@@ -33,6 +33,7 @@ import qualified Data.X509 as X509
 import Network.URI (URI(..))
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.DOM.ShowXml as DOM
+import qualified Text.XML.HXT.DOM.XmlNode as DOM
 
 import SAML2.XML
 import SAML2.XML.Canonical
@@ -81,8 +82,8 @@ generateReference r x = do
 verifyReference :: Reference -> HXT.XmlTree -> IO (Bool, Bool)
 verifyReference r src = case referenceURI r of
   Just URI{ uriScheme = "", uriAuthority = Nothing, uriPath = "", uriQuery = "", uriFragment = '#':xid }
-    | [x] <- HXT.runLA (HXT.deep $ hasId xid) src -> do
-    t <- applyTransforms (referenceTransforms r) x
+    | x@[_] <- HXT.runLA (HXT.deep $ hasId xid) src -> do
+    t <- applyTransforms (referenceTransforms r) $ DOM.mkRoot [] x
     return (applyDigest (referenceDigestMethod r) t == referenceDigestValue r, not $ null $ HXT.runLA (hasId xid) src)
   _ -> return (False, False)
   where hasId = HXT.hasAttrValue "ID" . (==)
@@ -159,7 +160,7 @@ verifyBase64 pk alg m = either (const $ Just False) (verifyBytes pk alg m) . Bas
 
 generateSignature :: SigningKey -> SignedInfo -> IO Signature
 generateSignature sk si = do
-  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) $ XP.pickleDoc XP.xpickle si
+  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) $ samlToDoc si
   sv <- signBytes sk six
   return Signature
     { signatureId = Nothing
@@ -170,11 +171,11 @@ generateSignature sk si = do
     }
 
 verifySignature :: PublicKeys -> Signature -> HXT.XmlTree -> IO (Maybe Bool)
-verifySignature pks sig@Signature{ signatureSignedInfo = siginfo } msg = do
-  six <- applyCanonicalization (signedInfoCanonicalizationMethod siginfo) $ XP.pickleDoc XP.xpickle siginfo
-  rl <- mapM (`verifyReference` msg) (signedInfoReference siginfo)
+verifySignature pks sig@Signature{ signatureSignedInfo = si } msg = do
+  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) $ samlToDoc si
+  rl <- mapM (`verifyReference` msg) (signedInfoReference si)
   return $ ((all fst rl && any snd rl) &&)
-    <$> verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod siginfo) six (signatureValue $ signatureSignatureValue sig)
+    <$> verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod si) six (signatureValue $ signatureSignatureValue sig)
   where
   keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo sig)
   keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
