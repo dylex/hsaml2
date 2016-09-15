@@ -36,7 +36,7 @@ tests = U.test
         IDPSSODescriptor
           (RoleDescriptor
             Nothing Nothing Nothing
-            [uri $ namespaceURI SAMLP.ns]
+            [namespaceURI SAMLP.ns]
             Nothing [] Nothing
             (Extensions [])
             [KeyDescriptor
@@ -98,7 +98,7 @@ tests = U.test
         :| AttributeAuthorityDescriptor
           (RoleDescriptor
             Nothing Nothing Nothing
-            [uri $ namespaceURI SAMLP.ns]
+            [namespaceURI SAMLP.ns]
             Nothing [] Nothing
             (Extensions [])
             [KeyDescriptor
@@ -157,7 +157,7 @@ tests = U.test
         SPSSODescriptor
           (RoleDescriptor
             Nothing Nothing Nothing
-            [uri $ namespaceURI SAMLP.ns]
+            [namespaceURI SAMLP.ns]
             Nothing [] Nothing
             (Extensions [])
             [ KeyDescriptor
@@ -271,7 +271,7 @@ tests = U.test
             ]
             Nothing [] Nothing
             (Extensions [
-              pickleElem (xpTrimElemNS (Namespace "init" "urn:oasis:names:tc:SAML:profiles:SSO:request-init") "RequestInitiator" XP.xpickle) $
+              pickleElem (xpTrimElemNS (mkNamespace "init" $ uri "urn:oasis:names:tc:SAML:profiles:SSO:request-init") "RequestInitiator" XP.xpickle) $
               Endpoint
                 (Unidentified $ uri "urn:oasis:names:tc:SAML:profiles:SSO:request-init")
                 (uri "https://accounts.osf.io/Shibboleth.sso/Login")
