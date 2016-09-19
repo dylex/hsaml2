@@ -50,6 +50,6 @@ verifySAMLProtocol :: SAMLP.SAMLProtocol a => BSL.ByteString -> IO a
 verifySAMLProtocol b = do
   x <- maybe (fail "invalid XML") return $ xmlToDoc b
   m <- either fail return $ docToSAML x
-  v <- maybe (return Nothing) (DS.verifySignature mempty `flip` x) $ m ^. DS.signature'
+  v <- DS.verifySignature mempty x
   unless (or v) $ fail "verifySAMLProtocol: invalid or missing signature"
   return m

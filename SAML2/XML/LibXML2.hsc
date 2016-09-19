@@ -5,6 +5,8 @@ module SAML2.XML.LibXML2
   , c14n
   ) where
 
+import Control.Exception (bracket)
+import Control.Monad (forM)
 import Data.Bits ((.|.))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
@@ -18,15 +20,18 @@ import Foreign.C.Types (CInt(..))
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.Marshal (alloca, withArray0, withMany, maybeWith)
 import Foreign.Ptr (Ptr, FunPtr, nullPtr, castPtr)
-import Foreign.Storable (peek)
+import Foreign.Storable (peek, peekByteOff)
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.DOM.ShowXml as HXTS
 
+#include <libxml/parser.h>
 #include <libxml/parser.h>
 #include <libxml/c14n.h>
 
 type XMLChar = #type xmlChar
 data XMLDoc
+data XMLXPathContext
+data XMLXPathObject
 data XMLNodeSet
 
 foreign import ccall unsafe "libxml/parser.h xmlReadMemory"
@@ -34,6 +39,15 @@ foreign import ccall unsafe "libxml/parser.h xmlReadMemory"
 
 foreign import ccall unsafe "libxml/tree.h &xmlFreeDoc"
   xmlFreeDoc :: FunPtr ((Ptr XMLDoc) -> IO ())
+
+foreign import ccall unsafe "libxml/xpath.h xmlXPathNewContext"
+  xmlXPathNewContext :: Ptr XMLDoc -> IO (Ptr XMLXPathContext)
+
+foreign import ccall unsafe "libxml/xpath.h xmlXPathFreeContext"
+  xmlXPathFreeContext :: Ptr XMLXPathContext -> IO ()
+
+foreign import ccall unsafe "libxml/xpath.h xmlXPathEval"
+  xmlXPathEval :: Ptr XMLChar -> Ptr XMLXPathContext -> IO (Ptr XMLXPathObject)
 
 foreign import ccall unsafe "libxml/c14n.h xmlC14NDocDumpMemory"
   xmlC14NDocDumpMemory :: Ptr XMLDoc -> Ptr XMLNodeSet -> CInt -> Ptr (Ptr XMLChar) -> CInt -> Ptr (Ptr XMLChar) -> IO CInt
@@ -66,6 +80,9 @@ fromXmlTrees = fromBytes . BSL.toStrict . HXTS.xshow' cq aq unicodeCharToUtf8'
   aq '\10' = ("&#xA;"  ++)
   aq c = cq c
 
+withXMLXPathContext :: Ptr XMLDoc -> (Ptr XMLXPathContext -> IO a) -> IO a
+withXMLXPathContext d = bracket (xmlXPathNewContext d) xmlXPathFreeContext
+
 data C14NMode
   = C14N_1_0
   | C14N_EXCLUSIVE_1_0
@@ -76,13 +93,19 @@ c14nmode C14N_1_0           = #{const XML_C14N_1_0}
 c14nmode C14N_EXCLUSIVE_1_0 = #{const XML_C14N_EXCLUSIVE_1_0}
 c14nmode C14N_1_1           = #{const XML_C14N_1_1}
 
-c14n :: C14NMode -> Maybe [String] -> Bool -> Doc -> IO BS.ByteString
-c14n m i c d =
+c14n :: C14NMode -> Maybe [String] -> Bool -> Maybe String -> Doc -> IO BS.ByteString
+c14n m i c s d =
   withForeignPtr (unDoc d) $ \dp ->
   withMany withCString (fromMaybe [] i) $ \il ->
   maybeWith (withArray0 nullPtr) (il <$ i) $ \ip ->
   alloca $ \p -> do
+    sn <- forM s $ \ss ->
+      withCString ss $ \sp ->
+      withXMLXPathContext dp $ \sc -> do
+        xp <- throwErrnoIfNull "xmlXPathEval" $
+          xmlXPathEval ((castPtr :: CString -> Ptr Word8) sp) sc
+        #{peek xmlXPathObject, nodesetval} xp
     r <- throwErrnoIf (< 0) "xmlC14NDocDumpMemory" $
-      xmlC14NDocDumpMemory dp nullPtr (c14nmode m) ((castPtr :: Ptr CString -> Ptr (Ptr Word8)) ip) (fromIntegral $ fromEnum c) p
+      xmlC14NDocDumpMemory dp (fromMaybe nullPtr sn) (c14nmode m) ((castPtr :: Ptr CString -> Ptr (Ptr Word8)) ip) (fromIntegral $ fromEnum c) p
     pp <- peek p
     BSU.unsafePackCStringFinalizer pp (fromIntegral r) (xmlFree pp)

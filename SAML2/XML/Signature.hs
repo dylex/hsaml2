@@ -27,6 +27,7 @@ import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
+import Data.Char.Properties.XMLCharProps (isXmlSpaceChar)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Monoid ((<>))
 import qualified Data.X509 as X509
@@ -40,7 +41,10 @@ import SAML2.XML.Canonical
 import qualified SAML2.XML.Pickle as XP
 import SAML2.XML.Signature.Types
 
-applyCanonicalization :: CanonicalizationMethod -> HXT.XmlTree -> IO BS.ByteString
+isDSElem :: HXT.ArrowXml a => String -> a HXT.XmlTree HXT.XmlTree
+isDSElem n = HXT.isElem HXT.>>> HXT.hasQName (mkNName ns n)
+
+applyCanonicalization :: CanonicalizationMethod -> Maybe String -> HXT.XmlTree -> IO BS.ByteString
 applyCanonicalization (CanonicalizationMethod (Identified a) ins []) = canonicalize a ins
 applyCanonicalization m = fail $ "applyCanonicalization: unsupported " ++ show m
 
@@ -51,12 +55,12 @@ applyTransformsBytes (t : _) = fail ("applyTransforms: unsupported Signature " +
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
 applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x : tl) =
   applyTransformsBytes tl . BSL.fromStrict
-  <=< applyCanonicalization (CanonicalizationMethod (Identified a) ins (map (XP.pickleDoc XP.xpickle) x))
+  <=< applyCanonicalization (CanonicalizationMethod (Identified a) ins (map (XP.pickleDoc XP.xpickle) x)) Nothing
 applyTransformsXML (Transform (Identified TransformEnvelopedSignature) Nothing [] : tl) =
   -- XXX assumes "this" signature in top-level
   applyTransformsXML tl
-  . head . HXT.runLA (HXT.processChildren 
-    $ HXT.none `HXT.when` (HXT.isElem HXT.>>> HXT.hasQName (mkNName ns "Signature")))
+  . head . HXT.runLA (HXT.processChildren $ HXT.processChildren
+    $ HXT.neg (isDSElem "Signature"))
 applyTransformsXML tl = applyTransformsBytes tl . DOM.xshowBlob . return
 
 applyTransforms :: Maybe Transforms -> HXT.XmlTree -> IO BSL.ByteString
@@ -160,7 +164,8 @@ verifyBase64 pk alg m = either (const $ Just False) (verifyBytes pk alg m) . Bas
 
 generateSignature :: SigningKey -> SignedInfo -> IO Signature
 generateSignature sk si = do
-  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) $ samlToDoc si
+  -- XXX: samlToDoc may not match later
+  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) Nothing $ samlToDoc si
   sv <- signBytes sk six
   return Signature
     { signatureId = Nothing
@@ -170,14 +175,19 @@ generateSignature sk si = do
     , signatureObject = []
     }
 
-verifySignature :: PublicKeys -> Signature -> HXT.XmlTree -> IO (Maybe Bool)
-verifySignature pks sig@Signature{ signatureSignedInfo = si } msg = do
-  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) $ samlToDoc si
-  rl <- mapM (`verifyReference` msg) (signedInfoReference si)
+verifySignature :: PublicKeys -> HXT.XmlTree -> IO (Maybe Bool)
+verifySignature pks x = do
+  sx <- case child "Signature" x of
+    [sx] -> return sx
+    _ -> fail "verifySignature: Signature not found"
+  s@Signature{ signatureSignedInfo = si } <- either fail return $ docToSAML sx
+  six <- applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [x]
+  rl <- mapM (`verifyReference` x) (signedInfoReference si)
+  let keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo s)
   return $ ((all fst rl && any snd rl) &&)
-    <$> verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod si) six (signatureValue $ signatureSignatureValue sig)
+    <$> verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod si) (signatureValue $ signatureSignatureValue s) six
   where
-  keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo sig)
+  child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
   keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
   keyinfo (X509Data l) = foldMap keyx509d l
   keyinfo _ = mempty
@@ -186,3 +196,6 @@ verifySignature pks sig@Signature{ signatureSignedInfo = si } msg = do
   keyx509p (X509.PubKeyRSA r) = mempty{ publicKeyRSA = Just r }
   keyx509p (X509.PubKeyDSA d) = mempty{ publicKeyDSA = Just d }
   keyx509p _ = mempty
+  xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
+  xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
+  xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"

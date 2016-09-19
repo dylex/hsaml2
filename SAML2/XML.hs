@@ -139,14 +139,14 @@ xmlToDoc :: BSL.ByteString -> Maybe HXT.XmlTree
 xmlToDoc = listToMaybe . HXT.runLA
   (HXT.xreadDoc
   HXT.>>> HXT.removeWhiteSpace
-  HXT.>>> HXT.neg HXT.isXmlPi)
+  HXT.>>> HXT.neg HXT.isXmlPi
+  HXT.>>> HXT.propagateNamespaces)
   . BSLC.unpack -- XXX encoding?
 
 docToSAML :: XP.XmlPickler a => HXT.XmlTree -> Either String a
 docToSAML = XP.unpickleDoc' XP.xpickle
   . head
-  . HXT.runLA (HXT.propagateNamespaces
-      HXT.>>> HXT.processBottomUp (HXT.processAttrl (HXT.neg HXT.isNamespaceDeclAttr)))
+  . HXT.runLA (HXT.processBottomUp (HXT.processAttrl (HXT.neg HXT.isNamespaceDeclAttr)))
 
 xmlToSAML :: XP.XmlPickler a => BSL.ByteString -> Either String a
 xmlToSAML = maybe (Left "invalid XML") docToSAML . xmlToDoc
