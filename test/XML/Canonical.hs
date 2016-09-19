@@ -10,7 +10,7 @@ import SAML2.XML.Canonical
 canonicalizeXML :: CanonicalizationAlgorithm -> String -> Bool -> IO [BS.ByteString]
 canonicalizeXML c f ent = HXT.runX $
   (HXT.readDocument [HXT.withCheckNamespaces HXT.yes, HXT.withValidate HXT.no, HXT.withCanonicalize HXT.no, HXT.withSubstDTDEntities ent] f
-  HXT.>>> HXT.arrIO (canonicalize c Nothing))
+  HXT.>>> HXT.arrIO (canonicalize c Nothing Nothing))
 
 testC14N :: CanonicalizationAlgorithm -> String -> Bool -> BS.ByteString -> U.Test
 testC14N c f ent s = U.TestCase $

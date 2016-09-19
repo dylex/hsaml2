@@ -6,7 +6,7 @@ module SAML2.XML.LibXML2
   ) where
 
 import Control.Exception (bracket)
-import Control.Monad (forM)
+import Control.Monad ((<=<))
 import Data.Bits ((.|.))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
@@ -49,6 +49,9 @@ foreign import ccall unsafe "libxml/xpath.h xmlXPathFreeContext"
 foreign import ccall unsafe "libxml/xpath.h xmlXPathEval"
   xmlXPathEval :: Ptr XMLChar -> Ptr XMLXPathContext -> IO (Ptr XMLXPathObject)
 
+foreign import ccall unsafe "libxml/xpath.h xmlXPathFreeObject"
+  xmlXPathFreeObject :: Ptr XMLXPathObject -> IO ()
+
 foreign import ccall unsafe "libxml/c14n.h xmlC14NDocDumpMemory"
   xmlC14NDocDumpMemory :: Ptr XMLDoc -> Ptr XMLNodeSet -> CInt -> Ptr (Ptr XMLChar) -> CInt -> Ptr (Ptr XMLChar) -> IO CInt
 
@@ -80,8 +83,14 @@ fromXmlTrees = fromBytes . BSL.toStrict . HXTS.xshow' cq aq unicodeCharToUtf8'
   aq '\10' = ("&#xA;"  ++)
   aq c = cq c
 
-withXMLXPathContext :: Ptr XMLDoc -> (Ptr XMLXPathContext -> IO a) -> IO a
-withXMLXPathContext d = bracket (xmlXPathNewContext d) xmlXPathFreeContext
+withXMLXPathNodeList :: Ptr XMLDoc -> String -> (Ptr XMLNodeSet -> IO a) -> IO a
+withXMLXPathNodeList d s f = 
+  bracket (xmlXPathNewContext d) xmlXPathFreeContext $ \c ->
+  withCString s $ \p ->
+  bracket
+    (throwErrnoIfNull "xmlXPathEval" $ xmlXPathEval ((castPtr :: CString -> Ptr Word8) p) c)
+    xmlXPathFreeObject
+    $ f <=< #peek xmlXPathObject, nodesetval
 
 data C14NMode
   = C14N_1_0
@@ -98,14 +107,9 @@ c14n m i c s d =
   withForeignPtr (unDoc d) $ \dp ->
   withMany withCString (fromMaybe [] i) $ \il ->
   maybeWith (withArray0 nullPtr) (il <$ i) $ \ip ->
+  maybeWith (withXMLXPathNodeList dp) s $ \sn ->
   alloca $ \p -> do
-    sn <- forM s $ \ss ->
-      withCString ss $ \sp ->
-      withXMLXPathContext dp $ \sc -> do
-        xp <- throwErrnoIfNull "xmlXPathEval" $
-          xmlXPathEval ((castPtr :: CString -> Ptr Word8) sp) sc
-        #{peek xmlXPathObject, nodesetval} xp
     r <- throwErrnoIf (< 0) "xmlC14NDocDumpMemory" $
-      xmlC14NDocDumpMemory dp (fromMaybe nullPtr sn) (c14nmode m) ((castPtr :: Ptr CString -> Ptr (Ptr Word8)) ip) (fromIntegral $ fromEnum c) p
+      xmlC14NDocDumpMemory dp sn (c14nmode m) ((castPtr :: Ptr CString -> Ptr (Ptr Word8)) ip) (fromIntegral $ fromEnum c) p
     pp <- peek p
     BSU.unsafePackCStringFinalizer pp (fromIntegral r) (xmlFree pp)
