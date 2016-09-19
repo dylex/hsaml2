@@ -24,7 +24,6 @@ module SAML2.Core
   , Issuer(..)
   , AssertionIDRef(..)
   , Assertion(..)
-  , AssertionStatement(..)
   , EncryptedAssertion
   , Subject(..)
   , noSubject

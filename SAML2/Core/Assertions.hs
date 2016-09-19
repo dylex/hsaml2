@@ -151,7 +151,7 @@ data Assertion = Assertion
   , assertionSubject :: Subject -- ^use 'noSubject' to omit
   , assertionConditions :: Maybe Conditions
   , assertionAdvice :: Maybe Advice
-  , assertionStatement :: [AssertionStatement]
+  , assertionStatement :: [Statement]
   } deriving (Eq, Show)
 
 instance XP.XmlPickler Assertion where
@@ -171,24 +171,6 @@ instance XP.XmlPickler Assertion where
 
 instance DS.Signable Assertion where
   signature' = $(fieldLens 'assertionSignature)
-
-data AssertionStatement
-  = AssertionStatement Statement
-  | AssertionAuthnStatement AuthnStatement
-  | AssertionAuthzDecisionStatement AuthzDecisionStatement
-  | AssertionAttributeStatement AttributeStatement
-  deriving (Eq, Show)
-
-instance XP.XmlPickler AssertionStatement where
-  xpickle = [XP.biCase|
-      Left (Left (Left s)) <-> AssertionStatement s
-      Left (Left (Right s)) <-> AssertionAuthnStatement s
-      Left (Right s) <-> AssertionAuthzDecisionStatement s
-      Right s <-> AssertionAttributeStatement s|]
-    XP.>$<  (XP.xpickle
-      XP.>|< XP.xpickle
-      XP.>|< XP.xpickle
-      XP.>|< XP.xpickle)
 
 -- |§2.3.4
 type EncryptedAssertion = EncryptedElement Assertion

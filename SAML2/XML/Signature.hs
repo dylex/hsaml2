@@ -27,7 +27,6 @@ import qualified Data.ByteArray as BA
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
-import Data.Char.Properties.XMLCharProps (isXmlSpaceChar)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Monoid ((<>))
 import qualified Data.X509 as X509
