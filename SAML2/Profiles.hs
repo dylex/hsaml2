@@ -3,5 +3,7 @@
 --
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf saml-profiles-2.0-os>
 module SAML2.Profiles
-  (
+  ( module SAML2.Profiles.ConfirmationMethod
   ) where
+
+import SAML2.Profiles.ConfirmationMethod
