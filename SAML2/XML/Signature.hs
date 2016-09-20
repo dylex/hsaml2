@@ -16,7 +16,7 @@ module SAML2.XML.Signature
   ) where
 
 import Control.Applicative ((<|>))
-import Control.Monad ((<=<))
+import Control.Monad (guard, (<=<))
 import Crypto.Number.Basic (numBytes)
 import Crypto.Number.Serialize (i2ospOf_, os2ip)
 import Crypto.Hash (hashlazy, SHA1(..), SHA256(..), SHA512(..), RIPEMD160(..))
@@ -28,6 +28,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List.NonEmpty as NonEmpty
+import Data.Maybe (isJust)
 import Data.Monoid ((<>))
 import qualified Data.X509 as X509
 import Network.URI (URI(..))
@@ -42,6 +43,9 @@ import SAML2.XML.Signature.Types
 
 isDSElem :: HXT.ArrowXml a => String -> a HXT.XmlTree HXT.XmlTree
 isDSElem n = HXT.isElem HXT.>>> HXT.hasQName (mkNName ns n)
+
+getID :: HXT.ArrowXml a => String -> a HXT.XmlTree HXT.XmlTree
+getID = HXT.deep . HXT.hasAttrValue "ID" . (==)
 
 applyCanonicalization :: CanonicalizationMethod -> Maybe String -> HXT.XmlTree -> IO BS.ByteString
 applyCanonicalization (CanonicalizationMethod (Identified a) ins []) = canonicalize a ins
@@ -82,14 +86,13 @@ generateReference r x = do
   return r
     { referenceDigestValue = d }
 
-verifyReference :: Reference -> HXT.XmlTree -> IO (Bool, Bool)
-verifyReference r src = case referenceURI r of
+verifyReference :: Reference -> HXT.XmlTree -> IO (Maybe String)
+verifyReference r doc = case referenceURI r of
   Just URI{ uriScheme = "", uriAuthority = Nothing, uriPath = "", uriQuery = "", uriFragment = '#':xid }
-    | x@[_] <- HXT.runLA (HXT.deep $ hasId xid) src -> do
+    | x@[_] <- HXT.runLA (getID xid) doc -> do
     t <- applyTransforms (referenceTransforms r) $ DOM.mkRoot [] x
-    return (applyDigest (referenceDigestMethod r) t == referenceDigestValue r, not $ null $ HXT.runLA (hasId xid) src)
-  _ -> return (False, False)
-  where hasId = HXT.hasAttrValue "ID" . (==)
+    return $ xid <$ guard (applyDigest (referenceDigestMethod r) t == referenceDigestValue r)
+  _ -> return Nothing
 
 data SigningKey
   = SigningKeyDSA DSA.KeyPair
@@ -174,8 +177,11 @@ generateSignature sk si = do
     , signatureObject = []
     }
 
-verifySignature :: PublicKeys -> HXT.XmlTree -> IO (Maybe Bool)
-verifySignature pks x = do
+verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Maybe Bool)
+verifySignature pks xid doc = do
+  x <- case HXT.runLA (getID xid) doc of
+    [x] -> return x
+    _ -> fail "verifySignature: element not found"
   sx <- case child "Signature" x of
     [sx] -> return sx
     _ -> fail "verifySignature: Signature not found"
@@ -183,7 +189,7 @@ verifySignature pks x = do
   six <- applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [x]
   rl <- mapM (`verifyReference` x) (signedInfoReference si)
   let keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo s)
-  return $ ((all fst rl && any snd rl) &&)
+  return $ ((any (Just xid ==) rl && all isJust rl) &&)
     <$> verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod si) (signatureValue $ signatureSignatureValue s) six
   where
   child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
