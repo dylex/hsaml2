@@ -124,7 +124,7 @@ instance XP.XmlPickler AssertionRef where
       XP.>|< xpPossiblyEncrypted)
 
 -- |§2.2.5
-newtype Issuer = Issuer NameID
+newtype Issuer = Issuer{ issuer :: NameID }
   deriving (Eq, Show)
 
 instance XP.XmlPickler Issuer where
@@ -133,7 +133,7 @@ instance XP.XmlPickler Issuer where
     XP.>$< xpNameIDDefaulting (Identified NameIDFormatEntity)
 
 -- |§2.3.1
-newtype AssertionIDRef = AssertionIDRef ID
+newtype AssertionIDRef = AssertionIDRef{ assertionIDRef :: ID }
   deriving (Eq, Show)
 
 instance XP.XmlPickler AssertionIDRef where
@@ -267,7 +267,7 @@ instance XP.XmlPickler Condition where
       XP.>|< xpTrimAnyElem)
 
 -- |§2.5.1.4
-newtype Audience = Audience AnyURI
+newtype Audience = Audience{ audience :: AnyURI }
   deriving (Eq, Show)
 
 instance XP.XmlPickler Audience where
@@ -365,7 +365,7 @@ instance XP.XmlPickler AuthnContextDecl where
       XP.>|< xpElem "AuthnContextDeclRef" XS.xpAnyURI)
 
 -- |§2.7.3
-newtype AttributeStatement = AttributeStatement (List1 (PossiblyEncrypted Attribute))
+newtype AttributeStatement = AttributeStatement{ attributeStatement :: List1 (PossiblyEncrypted Attribute) }
   deriving (Eq, Show)
 
 instance XP.XmlPickler AttributeStatement where

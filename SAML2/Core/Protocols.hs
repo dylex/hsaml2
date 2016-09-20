@@ -517,7 +517,7 @@ instance SAMLProtocol ManageNameIDRequest where
 instance SAMLRequest ManageNameIDRequest where
   samlRequest' = $(fieldLens 'manageNameIDRequest)
 
-newtype NewID = NewID XString
+newtype NewID = NewID{ newID :: XString }
   deriving (Eq, Show)
 
 instance XP.XmlPickler NewID where
