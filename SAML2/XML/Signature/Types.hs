@@ -62,6 +62,7 @@ instance XP.XmlPickler Signature where
 
 class Signable a where
   signature' :: Lens' a (Maybe Signature)
+  signedID :: a -> XS.ID
 
 -- |§4.3
 data SignatureValue = SignatureValue

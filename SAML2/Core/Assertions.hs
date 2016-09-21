@@ -171,6 +171,7 @@ instance XP.XmlPickler Assertion where
 
 instance DS.Signable Assertion where
   signature' = $(fieldLens 'assertionSignature)
+  signedID = assertionID
 
 -- |§2.3.4
 type EncryptedAssertion = EncryptedElement Assertion

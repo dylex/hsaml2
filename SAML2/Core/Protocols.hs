@@ -9,7 +9,7 @@
 -- <https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf saml-core-2.0-os> §3
 module SAML2.Core.Protocols where
 
-import Control.Lens (Lens', lens, (.~), (^.))
+import Control.Lens (Lens', lens, (.~), (^.), view)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy, asProxyTypeOf)
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
@@ -61,6 +61,7 @@ instance XP.XmlPickler ProtocolType where
 
 instance DS.Signable ProtocolType where
   signature' = $(fieldLens 'protocolSignature)
+  signedID = protocolID
 class (XP.XmlPickler a, DS.Signable a, Show a) => SAMLProtocol a where
   samlProtocol' :: Lens' a ProtocolType
   isSAMLResponse :: a -> Bool
@@ -209,6 +210,7 @@ instance XP.XmlPickler AssertionIDRequest where
       XP.>*< xpList1 XP.xpickle)
 instance DS.Signable AssertionIDRequest where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AssertionIDRequest where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -245,6 +247,7 @@ instance XP.XmlPickler AuthnQuery where
       XP.>*< XP.xpOption XP.xpickle)
 instance DS.Signable AuthnQuery where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AuthnQuery where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -304,6 +307,7 @@ instance XP.XmlPickler AttributeQuery where
       XP.>*< XP.xpList XP.xpickle)
 instance DS.Signable AttributeQuery where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AttributeQuery where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -328,6 +332,7 @@ instance XP.XmlPickler AuthzDecisionQuery where
       XP.>*< XP.xpickle)
 instance DS.Signable AuthzDecisionQuery where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AuthzDecisionQuery where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -348,6 +353,7 @@ instance XP.XmlPickler Response where
       XP.>*< XP.xpList SAML.xpPossiblyEncrypted)
 instance DS.Signable Response where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol Response where
   samlProtocol' = samlResponse' . statusProtocol'
   isSAMLResponse _ = True
@@ -396,6 +402,7 @@ instance XP.XmlPickler AuthnRequest where
       XP.>*< XP.xpOption XP.xpickle)
 instance DS.Signable AuthnRequest where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AuthnRequest where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -469,6 +476,7 @@ instance XP.XmlPickler ArtifactResolve where
       XP.>*< xpElem "Artifact" XS.xpString)
 instance DS.Signable ArtifactResolve where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol ArtifactResolve where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -488,6 +496,7 @@ instance XP.XmlPickler ArtifactResponse where
       XP.>*< XP.xpOption xpTrimAnyElem)
 instance DS.Signable ArtifactResponse where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol ArtifactResponse where
   samlProtocol' = samlResponse' . statusProtocol'
   isSAMLResponse _ = True
@@ -511,6 +520,7 @@ instance XP.XmlPickler ManageNameIDRequest where
         XP.>|< xpElem "Terminate" XP.xpUnit))
 instance DS.Signable ManageNameIDRequest where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol ManageNameIDRequest where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -541,6 +551,7 @@ instance XP.XmlPickler ManageNameIDResponse where
     XP.>$< XP.xpickle
 instance DS.Signable ManageNameIDResponse where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol ManageNameIDResponse where
   samlProtocol' = samlResponse' . statusProtocol'
   isSAMLResponse _ = True
@@ -566,6 +577,7 @@ instance XP.XmlPickler LogoutRequest where
       XP.>*< XP.xpOption (xpElem "SessionIndex" XS.xpString))
 instance DS.Signable LogoutRequest where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol LogoutRequest where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -583,6 +595,7 @@ instance XP.XmlPickler LogoutResponse where
     XP.>$< XP.xpickle
 instance DS.Signable LogoutResponse where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol LogoutResponse where
   samlProtocol' = samlResponse' . statusProtocol'
   isSAMLResponse _ = True
@@ -617,6 +630,7 @@ instance XP.XmlPickler NameIDMappingRequest where
       XP.>*< XP.xpickle)
 instance DS.Signable NameIDMappingRequest where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol NameIDMappingRequest where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -636,6 +650,7 @@ instance XP.XmlPickler NameIDMappingResponse where
       XP.>*< SAML.xpPossiblyEncrypted)
 instance DS.Signable NameIDMappingResponse where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol NameIDMappingResponse where
   samlProtocol' = samlResponse' . statusProtocol'
   isSAMLResponse _ = True
@@ -676,6 +691,7 @@ instance XP.XmlPickler AnyRequest where
       XP.>|< XP.xpickle)
 instance DS.Signable AnyRequest where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AnyRequest where
   samlProtocol' = samlRequest' . requestProtocol'
   isSAMLResponse _ = False
@@ -713,6 +729,7 @@ instance XP.XmlPickler AnyResponse where
       XP.>|< XP.xpickle)
 instance DS.Signable AnyResponse where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AnyResponse where
   samlProtocol' = samlResponse' . statusProtocol'
   isSAMLResponse _ = True
@@ -736,6 +753,7 @@ instance XP.XmlPickler AnyProtocol where
       XP.>|< XP.xpickle)
 instance DS.Signable AnyProtocol where
   signature' = samlProtocol' . DS.signature'
+  signedID = protocolID . view samlProtocol'
 instance SAMLProtocol AnyProtocol where
   samlProtocol' = lens g s where
     g (ProtocolRequest  r) = r ^. samlProtocol'
