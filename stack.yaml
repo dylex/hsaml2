@@ -1,0 +1,12 @@
+resolver: lts-7.17
+extra-deps:
+- invertible-0.1.2
+flags:
+  invertible:
+    TypeCompose: false
+    arrows: false
+    hlist: false
+    invariant: false
+    lens: false
+    partial-isomorphisms: false
+    piso: false
