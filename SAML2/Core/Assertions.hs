@@ -15,7 +15,7 @@ import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
 import SAML2.Lens
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Schema as XS
 import qualified SAML2.XML.Signature.Types as DS
 import qualified SAML2.XML.Encryption as XEnc
@@ -228,7 +228,7 @@ instance XP.XmlPickler SubjectConfirmationData where
       XP.>*< XP.xpAttrImplied "InResponseTo" XS.xpNCName
       XP.>*< XP.xpAttrImplied "Address" xpIP
       XP.>*< XP.xpList XP.xpickle
-      XP.>*< xpAny)
+      XP.>*< XP.xpAny)
 
 -- |§2.5.1
 data Conditions = Conditions
@@ -362,7 +362,7 @@ instance XP.XmlPickler AuthnContextDecl where
   xpickle = [XP.biCase|
       Left d <-> AuthnContextDecl d
       Right r <-> AuthnContextDeclRef r|]
-    XP.>$<  (xpElem "AuthnContextDecl" xpAny
+    XP.>$<  (xpElem "AuthnContextDecl" XP.xpAny
       XP.>|< xpElem "AuthnContextDeclRef" XS.xpAnyURI)
 
 -- |§2.7.3
@@ -389,8 +389,8 @@ xpAttributeType = [XP.biCase|
   XP.>$<  (XP.xpAttr "Name" XS.xpString
     XP.>*< XP.xpDefault (Identified AttributeNameFormatUnspecified) (XP.xpAttr "NameFormat" XP.xpickle)
     XP.>*< XP.xpAttrImplied "FriendlyName" XS.xpString
-    XP.>*< xpAnyAttrs
-    XP.>*< XP.xpList (xpElem "AttributeValue" xpAny))
+    XP.>*< XP.xpAnyAttrs
+    XP.>*< XP.xpList (xpElem "AttributeValue" XP.xpAny))
 
 instance XP.XmlPickler Attribute where
   xpickle = xpElem "Attribute" xpAttributeType

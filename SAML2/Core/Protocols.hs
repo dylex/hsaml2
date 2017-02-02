@@ -16,7 +16,7 @@ import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
 import SAML2.Lens
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Schema as XS
 import qualified SAML2.XML.Signature.Types as DS
 import SAML2.Core.Namespaces
@@ -114,7 +114,7 @@ instance XP.XmlPickler Status where
       ((c, m), d) <-> Status c m d|]
     XP.>$<  (XP.xpickle
       XP.>*< XP.xpOption (xpElem "StatusMessage" XP.xpText0)
-      XP.>*< XP.xpOption (xpElem "StatusDetail" xpAnyCont))
+      XP.>*< XP.xpOption (xpElem "StatusDetail" XP.xpAnyCont))
 
 -- |§3.2.2.2
 data StatusCode = StatusCode

@@ -7,10 +7,6 @@ module SAML2.XML
   ( module SAML2.XML.Types
   , module SAML2.Core.Datatypes
   , URI
-  , xpAnyCont
-  , xpAnyAttrs
-  , xpAny
-  , xpAnyElem
   , xpTrimAnyElem
   , xpTrimElemNS
   , xpXmlLang
@@ -29,52 +25,24 @@ module SAML2.XML
   , xmlToDoc
   ) where
 
-import Control.Monad.State.Class (state)
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Default (Default(..))
 import qualified Data.Invertible as Inv
-import Data.List (partition)
 import Data.Maybe (listToMaybe)
 import Network.URI (URI)
 import qualified Text.XML.HXT.Core as HXT
-import qualified Text.XML.HXT.DOM.XmlNode as HX
-import qualified Text.XML.HXT.Arrow.Pickle.Schema as SC
 
 import SAML2.XML.Types
 import SAML2.Core.Datatypes
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Schema as XS
 
-xpAnyCont :: XP.PU HXT.XmlTrees
-xpAnyCont = XP.PU
-  { XP.appPickle = \c s -> s{ XP.contents = c ++ XP.contents s }
-  , XP.appUnPickle = state $ \s -> (XP.contents s, s{ XP.contents = [] })
-  , XP.theSchema = SC.Any -- XXX
-  }
-
-xpAnyAttrs :: XP.PU HXT.XmlTrees
-xpAnyAttrs = XP.PU
-  { XP.appPickle = \a s -> s{ XP.attributes = a ++ XP.attributes s }
-  , XP.appUnPickle = state $ \s -> (XP.attributes s, s{ XP.attributes = [] })
-  , XP.theSchema = SC.Any -- XXX
-  }
-
--- |Any content and attributes
-xpAny :: XP.PU HXT.XmlTrees
-xpAny = (uncurry (++) Inv.:<->: partition HX.isAttr) XP.>$< (xpAnyAttrs XP.>*< xpAnyCont)
-
-xpAnyElem :: XP.PU HXT.XmlTree
-xpAnyElem = XP.xpWrapEither 
-  ( \e -> if HX.isElem e then Right e else Left "xpAnyElem: any element expected"
-  , id
-  ) XP.xpTree
-
 xpTrimAnyElem :: XP.PU HXT.XmlTree
-xpTrimAnyElem = XP.xpWhitespace XP.*< xpAnyElem
+xpTrimAnyElem = XP.xpTrim XP.xpAnyElem
 
 xpTrimElemNS :: Namespace -> String -> XP.PU a -> XP.PU a
-xpTrimElemNS ns n c = XP.xpWhitespace XP.*< XP.xpElemQN (mkNName ns n) (c XP.>* XP.xpWhitespace)
+xpTrimElemNS ns n c = XP.xpTrim $ XP.xpElemQN (mkNName ns n) (c XP.>* XP.xpWhitespace)
 
 xpXmlLang :: XP.PU XS.Language
 xpXmlLang = XP.xpAttrQN (mkNName xmlNS "lang") $ XS.xpLanguage

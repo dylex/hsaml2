@@ -6,7 +6,7 @@ import Data.ASN1.BinaryEncoding (BER(BER), DER(DER))
 import Data.ASN1.Encoding (decodeASN1', encodeASN1')
 import qualified Data.X509 as X509
 
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Schema as XS
 
 xpASN1 :: XP.PU [ASN1]

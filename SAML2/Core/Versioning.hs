@@ -9,7 +9,7 @@ module SAML2.Core.Versioning
 
 import Data.Version (Version, makeVersion)
 
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 
 data SAMLVersion
   = SAML10

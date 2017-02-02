@@ -5,7 +5,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Network.URI (URI(..), URIAuth(..), uriToString)
 import qualified Text.XML.HXT.DOM.TypeDefs as HXT
 
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 
 type Node = HXT.XmlTree
 -- instance XP.XmlPickler XML.Node where xpickle = XP.xpTree

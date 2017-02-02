@@ -10,7 +10,7 @@
 module SAML2.XML.Encryption where
 
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Schema as XS
 import qualified SAML2.XML.Signature.Types as DS
 
@@ -62,7 +62,7 @@ xpEncryptionMethodType =
     XP.>*< XP.xpOption (xpElem "KeySize" XP.xpickle)
     XP.>*< XP.xpOption (xpElem "OAEPparams" XS.xpBase64Binary)
     XP.>*< XP.xpOption XP.xpickle
-    XP.>*< xpAnyCont)
+    XP.>*< XP.xpAnyCont)
 
 instance XP.XmlPickler EncryptionMethod where
   xpickle = xpElem "EncryptionMethod" xpEncryptionMethodType
@@ -159,7 +159,7 @@ instance XP.XmlPickler EncryptionProperty where
     [XP.biCase|((i, t), x) <-> EncryptionProperty i t x|] 
     XP.>$<  (XP.xpAttrImplied "Id" XS.xpID
       XP.>*< XP.xpAttrImplied "Target" XS.xpAnyURI
-      XP.>*< xpAny)
+      XP.>*< XP.xpAny)
 
 -- |§5.1
 data EncryptionAlgorithm

@@ -38,7 +38,7 @@ import qualified Text.XML.HXT.DOM.XmlNode as DOM
 
 import SAML2.XML
 import SAML2.XML.Canonical
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import SAML2.XML.Signature.Types
 
 isDSElem :: HXT.ArrowXml a => String -> a HXT.XmlTree HXT.XmlTree

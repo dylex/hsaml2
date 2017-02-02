@@ -16,7 +16,7 @@ import qualified Text.XML.HXT.Core as HXT
 import SAML2.XML
 import qualified SAML2.XML.LibXML2 as LibXML2
 import qualified SAML2.XML.Schema as XS
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 
 -- |§6.5
 data CanonicalizationAlgorithm

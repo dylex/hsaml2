@@ -14,7 +14,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Network.URI (URI(uriFragment), nullURI)
 
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Canonical as C14N
 import qualified SAML2.XML.Signature as DS
 import qualified SAML2.Core.Protocols as SAMLP

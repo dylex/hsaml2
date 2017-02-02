@@ -12,7 +12,6 @@ import Data.Monoid ((<>))
 import Network.URI (URI(..))
 
 import SAML2.Core.Versioning
-import SAML2.XML
 
 samlURN :: SAMLVersion -> [String] -> URI
 samlURN v l = URI

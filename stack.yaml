@@ -1,6 +1,17 @@
-resolver: lts-7.17
-extra-deps:
-- invertible-0.1.2
+resolver: lts-7.18
+packages:
+- location: .
+- location:
+    git: git://github.com/dylex/invertible
+    commit: 274d01b
+  subdirs:
+  - .
+  - hxt
+  extra-dep: true
+- location:
+    git: git://github.com/dylex/HUnit-Diff
+    commit: 88a2695
+  extra-dep: true
 flags:
   invertible:
     TypeCompose: false

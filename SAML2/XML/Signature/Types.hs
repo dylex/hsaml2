@@ -14,7 +14,7 @@ import qualified Data.X509 as X509
 
 import SAML2.XML
 import qualified SAML2.XML.Schema as XS
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Canonical as C14N
 import SAML2.XML.ASN1
 
@@ -104,7 +104,7 @@ instance XP.XmlPickler CanonicalizationMethod where
     [XP.biCase|((a, n), x) <-> CanonicalizationMethod a n x|] 
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
       XP.>*< XP.xpOption XP.xpickle
-      XP.>*< xpAnyCont)
+      XP.>*< XP.xpAnyCont)
 
 simpleCanonicalization :: C14N.CanonicalizationAlgorithm -> CanonicalizationMethod
 simpleCanonicalization a = CanonicalizationMethod (Identified a) Nothing []
@@ -121,7 +121,7 @@ instance XP.XmlPickler SignatureMethod where
     [XP.biCase|((a, l), x) <-> SignatureMethod a l x|] 
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
       XP.>*< XP.xpOption (xpElem "HMACOutputLength" XP.xpickle)
-      XP.>*< xpAnyCont)
+      XP.>*< XP.xpAnyCont)
 
 -- |§4.4.3
 data Reference = Reference
@@ -190,7 +190,7 @@ instance XP.XmlPickler DigestMethod where
   xpickle = xpElem "DigestMethod" $
     [XP.biCase|(a, d) <-> DigestMethod a d|]
     XP.>$< (XP.xpAttr "Algorithm" XP.xpickle
-      XP.>*< xpAnyCont)
+      XP.>*< XP.xpAnyCont)
 
 simpleDigest :: DigestAlgorithm -> DigestMethod
 simpleDigest a = DigestMethod (Identified a) []

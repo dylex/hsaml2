@@ -16,7 +16,7 @@ import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
 import SAML2.Lens
 import SAML2.XML
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Schema as XS
 import qualified SAML2.XML.Signature.Types as DS
 import qualified SAML2.XML.Encryption as XEnc
@@ -53,7 +53,7 @@ instance XP.XmlPickler Endpoint where
     XP.>$<  (XP.xpAttr "Binding" XP.xpickle
       XP.>*< XP.xpAttr "Location" XS.xpAnyURI
       XP.>*< XP.xpAttrImplied "ResponseLocation" XS.xpAnyURI
-      XP.>*< xpAnyAttrs
+      XP.>*< XP.xpAnyAttrs
       XP.>*< XP.xpList xpTrimAnyElem)
 
 -- |§2.2.3
@@ -127,7 +127,7 @@ instance XP.XmlPickler Metadata where
       XP.>*< XP.xpAttrImplied "ID" XS.xpID
       XP.>*< XP.xpAttrImplied "validUntil" XS.xpDateTime
       XP.>*< XP.xpAttrImplied "cacheDuration" XS.xpDuration
-      XP.>*< xpAnyAttrs
+      XP.>*< XP.xpAnyAttrs
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
@@ -182,7 +182,7 @@ instance XP.XmlPickler Descriptors where
       XP.>*< XP.xpAttrImplied "ID" XS.xpID
       XP.>*< XP.xpAttrImplied "validUntil" XS.xpDateTime
       XP.>*< XP.xpAttrImplied "cacheDuration" XS.xpDuration
-      XP.>*< xpAnyAttrs
+      XP.>*< XP.xpAnyAttrs
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< xpList1 (xpElem "AffiliateMember" xpEntityID)
@@ -288,7 +288,7 @@ instance XP.XmlPickler Organization where
   xpickle = xpElem "Organization" $
     [XP.biCase|
       ((((a, e), n), d), u) <-> Organization a e n d u|]
-    XP.>$<  (xpAnyAttrs
+    XP.>$<  (XP.xpAnyAttrs
       XP.>*< XP.xpickle
       XP.>*< xpList1 (xpElem "OrganizationName" XP.xpickle)
       XP.>*< xpList1 (xpElem "OrganizationDisplayName" XP.xpickle)
@@ -311,7 +311,7 @@ instance XP.XmlPickler Contact where
     [XP.biCase|
       (((((((t, a), ext), c), g), s), e), tn) <-> ContactPerson t a ext c g s e tn|]
     XP.>$<  (XP.xpAttr "contactType" XP.xpickle
-      XP.>*< xpAnyAttrs
+      XP.>*< XP.xpAnyAttrs
       XP.>*< XP.xpickle
       XP.>*< XP.xpOption (xpElem "Company" XS.xpString)
       XP.>*< XP.xpOption (xpElem "GivenName" XS.xpString)
@@ -372,7 +372,7 @@ instance XP.XmlPickler RoleDescriptor where
       XP.>*< XP.xpAttrImplied "cacheDuration" XS.xpDuration
       XP.>*< XP.xpAttr "protocolSupportEnumeration" xpAnyURIList
       XP.>*< XP.xpAttrImplied "errorURL" XS.xpAnyURI
-      XP.>*< xpAnyAttrs
+      XP.>*< XP.xpAnyAttrs
       XP.>*< XP.xpickle
       XP.>*< XP.xpickle
       XP.>*< XP.xpList XP.xpickle

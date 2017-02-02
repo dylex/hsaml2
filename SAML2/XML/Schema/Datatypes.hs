@@ -22,7 +22,7 @@ import Text.XML.HXT.DOM.QualifiedName (isNCName)
 import qualified Text.XML.HXT.DOM.XmlNode as XN
 import qualified Text.XML.HXT.XMLSchema.DataTypeLibW3CNames as XSD
 
-import qualified SAML2.XML.Pickle as XP
+import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 
 -- |§3.2.1
 type String = [Char]
