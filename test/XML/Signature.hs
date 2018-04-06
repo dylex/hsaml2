@@ -75,7 +75,7 @@ tests = U.test
             :| [])
           :| [])]]
 
-  , testXML "http://www.w3.org/TR/xmldsig-core/signature-example-rsa.xml" $
+  , testXML "http://www.w3.org/TR/2002/REC-xmldsig-core-20020212/signature-example-rsa.xml" $
     Signature Nothing
       (SignedInfo Nothing
         (CanonicalizationMethod 
@@ -112,7 +112,7 @@ tests = U.test
         : [])
       []
 
-  , testXML "http://www.w3.org/TR/xmldsig-core/signature-example-dsa.xml" $
+  , testXML "http://www.w3.org/TR/2002/REC-xmldsig-core-20020212/signature-example-dsa.xml" $
     Signature Nothing
       (SignedInfo Nothing
         (CanonicalizationMethod 

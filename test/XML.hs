@@ -7,7 +7,6 @@ module XML
 import Data.Maybe (fromJust)
 import Network.URI (URI, parseURIReference)
 import qualified Test.HUnit as U
-import qualified Test.HUnit.Diff as UD
 
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.HTTP as HXT (withHTTP)
@@ -21,7 +20,7 @@ parseXML u = fmap (map (HXT.unpickleDoc' HXT.xpickle)) $
 
 testXML :: (Eq a, HXT.XmlPickler a, Show a) => String -> a -> U.Test
 testXML u a = U.TestCase $
-  UD.assertEqualDiffWord u [Right a] =<< parseXML u
+  U.assertEqual u [Right a] =<< parseXML u
 
 uri :: String -> URI
 uri = fromJust . parseURIReference
