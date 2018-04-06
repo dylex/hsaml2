@@ -1,23 +1,9 @@
-resolver: lts-7.18
+resolver: lts-11.3
+extra-deps:
+- invertible-hxt-0.1
 packages:
 - location: .
-- location:
-    git: git://github.com/dylex/invertible
-    commit: 274d01b
-  subdirs:
-  - .
-  - hxt
-  extra-dep: true
 - location:
     git: git://github.com/dylex/HUnit-Diff
     commit: 88a2695
   extra-dep: true
-flags:
-  invertible:
-    TypeCompose: false
-    arrows: false
-    hlist: false
-    invariant: false
-    lens: false
-    partial-isomorphisms: false
-    piso: false
