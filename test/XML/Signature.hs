@@ -1,20 +1,35 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module XML.Signature (tests) where
 
+import qualified Crypto.PubKey.DSA as DSA
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Time
 import qualified Data.X509 as X509
+import System.IO.Unsafe (unsafePerformIO)
 import qualified Test.HUnit as U
 import qualified Text.XML.HXT.DOM.QualifiedName as HXT
 import qualified Text.XML.HXT.DOM.XmlNode as HXT
 
+import SAML2.Core.Protocols
+import SAML2.Core.Versioning
+import SAML2.Core.Signature
+import SAML2.Core.Identifiers
 import SAML2.XML
-import SAML2.XML.Signature
 import SAML2.XML.Canonical
+import SAML2.XML.Signature
 
 import XML
 
 tests :: U.Test
-tests = U.test
+tests = U.test [serializationTests, signVerifyTests]
+
+
+----------------------------------------------------------------------
+-- serialization roundtrips
+
+serializationTests :: U.Test
+serializationTests = U.test
   [ testXML "test/XML/signature-example.xml" $
     Signature (Just "MyFirstSignature")
       (SignedInfo Nothing
@@ -152,3 +167,74 @@ tests = U.test
         : [])
       []
   ]
+
+
+----------------------------------------------------------------------
+-- signing / verification
+
+signVerifyTests :: U.Test
+signVerifyTests = U.test
+  [ U.TestCase $ do
+      let req = somereq
+      req' <- signSAMLProtocol privkey1 req
+      let reqlbs = samlToXML req'
+      req'' :: AuthnRequest <- verifySAMLProtocol reqlbs
+      U.assertEqual "AuthnRequest" req' req''
+
+  ]
+
+{-# NOINLINE keypair1 #-}
+keypair1 :: (SigningKey, PublicKeys)
+keypair1 = unsafePerformIO mkkeypair
+
+{-# NOINLINE keypair2 #-}
+keypair2 :: (SigningKey, PublicKeys)
+keypair2 = unsafePerformIO mkkeypair
+
+privkey1, _privkey2 :: SigningKey
+_pubkey1, _pubkey2 :: PublicKeys
+((privkey1, _pubkey1), (_privkey2, _pubkey2)) = (keypair1, keypair2)
+
+mkkeypair :: IO (SigningKey, PublicKeys)
+mkkeypair = do
+  privnum <- DSA.generatePrivate params
+  let pubnum = DSA.calculatePublic params privnum
+      kp = DSA.KeyPair params pubnum privnum
+  pure (SigningKeyDSA kp, PublicKeys (Just $ DSA.toPublicKey kp) Nothing)
+  where
+    params = DSA.Params
+      { DSA.params_p = 13232376895198612407547930718267435757728527029623408872245156039757713029036368719146452186041204237350521785240337048752071462798273003935646236777459223
+      , DSA.params_q = 857393771208094202104259627990318636601332086981
+      , DSA.params_g = 5421644057436475141609648488325705128047428394380474376834667300766108262613900542681289080713724597310673074119355136085795982097390670890367185141189796
+      }
+
+somereq :: AuthnRequest
+somereq = AuthnRequest
+  { authnRequest = RequestAbstractType someprottype
+  , authnRequestForceAuthn = False
+  , authnRequestIsPassive = False
+  , authnRequestAssertionConsumerService = AssertionConsumerServiceURL Nothing Nothing
+  , authnRequestAssertionConsumingServiceIndex = Nothing
+  , authnRequestProviderName = Nothing
+  , authnRequestSubject = Nothing
+  , authnRequestNameIDPolicy = Nothing
+  , authnRequestConditions = Nothing
+  , authnRequestRequestedAuthnContext = Nothing
+  , authnRequestScoping = Nothing
+  }
+
+someprottype :: ProtocolType
+someprottype = ProtocolType
+  { protocolID = "wef"
+  , protocolVersion = SAML20
+  , protocolIssueInstant = someTime
+  , protocolDestination = Nothing
+  , protocolConsent = Identified ConsentUnspecified
+  , protocolIssuer = Nothing
+  , protocolSignature = Nothing
+  , protocolExtensions = []
+  , relayState = Nothing
+  }
+
+someTime :: UTCTime
+Just someTime = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" "2013-03-18T03:28:54.1Z"

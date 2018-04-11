@@ -99,6 +99,7 @@ test-suite tests
   build-depends:
     base,
     bytestring,
+    cryptonite,
     hsaml2,
     hxt,
     hxt-http,
