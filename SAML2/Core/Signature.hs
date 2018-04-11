@@ -14,7 +14,6 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Network.URI (URI(uriFragment), nullURI)
 
 import SAML2.XML
-import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import qualified SAML2.XML.Canonical as C14N
 import qualified SAML2.XML.Signature as DS
 import qualified SAML2.Core.Protocols as SAMLP
@@ -31,7 +30,7 @@ signSAMLProtocol sk m = do
       : []
     , DS.referenceDigestMethod = DS.simpleDigest DS.DigestSHA1
     , DS.referenceDigestValue = error "signSAMLProtocol: referenceDigestValue"
-    } $ XP.pickleDoc XP.xpickle m
+    } $ samlToDoc m
   s' <- DS.generateSignature sk $ maybe DS.SignedInfo
     { DS.signedInfoId = Nothing
     , DS.signedInfoCanonicalizationMethod = DS.simpleCanonicalization $ C14N.CanonicalXMLExcl10 False
