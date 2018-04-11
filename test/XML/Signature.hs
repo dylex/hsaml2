@@ -93,11 +93,11 @@ serializationTests = U.test
   , testXML "http://www.w3.org/TR/2002/REC-xmldsig-core-20020212/signature-example-rsa.xml" $
     Signature Nothing
       (SignedInfo Nothing
-        (CanonicalizationMethod 
+        (CanonicalizationMethod
           (Identified (CanonicalXML10 False))
           Nothing
           [])
-        (SignatureMethod 
+        (SignatureMethod
           (Identified SignatureRSA_SHA1)
           Nothing
           [])
@@ -105,7 +105,7 @@ serializationTests = U.test
           (Just $ uri "http://www.w3.org/TR/xml-stylesheet")
           Nothing
           Nothing
-          (DigestMethod 
+          (DigestMethod
             (Identified DigestSHA1)
             [])
           "\235Cof\251]L\US\187RyK\167\241\246\226\158\225\225\187"
@@ -116,9 +116,9 @@ serializationTests = U.test
         KeyInfoKeyValue (RSAKeyValue
           129320787110389946406925163824095500161767249273623083115363317842079233133623467127773858023148958966585889333894288698085674111884585270272937137414571531865090153762072690670922714784242933462808045060688046441910524319219807614054721975863956765214954333806674482022007523948700289932875920496009317903247
           65537)
-        :| X509Data 
+        :| X509Data
           (X509SubjectName "\n        CN=Merlin Hughes,O=Baltimore Technologies\\, Ltd.,ST=Dublin,C=IE\n      "
-          :| X509IssuerSerial 
+          :| X509IssuerSerial
             "\n          CN=Test RSA CA,O=Baltimore Technologies\\, Ltd.,ST=Dublin,C=IE\n        "
             970849928
           : X509Certificate (either error id $ X509.decodeSignedObject
@@ -130,7 +130,7 @@ serializationTests = U.test
   , testXML "http://www.w3.org/TR/2002/REC-xmldsig-core-20020212/signature-example-dsa.xml" $
     Signature Nothing
       (SignedInfo Nothing
-        (CanonicalizationMethod 
+        (CanonicalizationMethod
           (Identified (CanonicalXML10 False))
           Nothing
           [])
@@ -150,7 +150,7 @@ serializationTests = U.test
       (SignatureValue Nothing
         "\169@\ETX\f\193\217\147'\155\189\ETBK\179\238\131\191\180o\128\194\209\149F\131\a\132=\202\DELW\160\144;\245\173\188\243g\223N")
       (Just $ KeyInfo Nothing $
-        KeyInfoKeyValue (DSAKeyValue 
+        KeyInfoKeyValue (DSAKeyValue
           (Just (153189639877411708224318232157362603672344144516811966787300053511761023886224186320604641484819218412604307502181416378142369715493548254902826913797675909798516465379299499179683104783603344189053156355893057246996756239330536459114483648506158907550755189559705056134296533730500485771224694549017281352213, 1393672757286116725466646726891466679477132949611))
           (Just 35729760834794135337622213068423837828001418115741637960451705317746718553830652249599411519579460551833355506946575671195284376652749132624400687252979877843978133909425395446287975790304889073526084815938167334643701873370635770822329121239717107729346766305695485960113338821879352438123181471401687525574)
           80624726256040348115552042320696813500187275370942441977258669395023235020055564647117594451929708788598704081077890850726227289270230377442285367559774800853404089092381420228663316324808605521697655145608801533888071381819208887705771753016938104409283940243801509765453542091716518238707344493641683483917
@@ -158,7 +158,7 @@ serializationTests = U.test
           Nothing)
         :| X509Data
           (X509SubjectName "\n        CN=Merlin Hughes,O=Baltimore Technologies\\, Ltd.,ST=Dublin,C=IE\n      "
-          :| X509IssuerSerial 
+          :| X509IssuerSerial
             "\n          CN=Test DSA CA,O=Baltimore Technologies\\, Ltd.,ST=Dublin,C=IE\n        "
             970849936
           : X509Certificate (either error id $ X509.decodeSignedObject

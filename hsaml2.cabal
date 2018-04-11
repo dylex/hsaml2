@@ -55,7 +55,7 @@ library
     SAML2.Bindings.Internal
   c-sources:
     SAML2/XML/libxml2_stub.c
-  build-depends:       
+  build-depends:
     asn1-encoding,
     asn1-types >= 0.2,
     base >=4.8 && <5,

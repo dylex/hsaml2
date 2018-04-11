@@ -66,7 +66,7 @@ class (XP.XmlPickler a, DS.Signable a, Show a) => SAMLProtocol a where
   samlProtocol' :: Lens' a ProtocolType
   isSAMLResponse :: a -> Bool
   isSAMLResponse_ :: Proxy a -> Maybe Bool
-  isSAMLResponse_ = Just . isSAMLResponse . asProxyTypeOf undefined 
+  isSAMLResponse_ = Just . isSAMLResponse . asProxyTypeOf undefined
 
 -- |§3.2.1
 newtype RequestAbstractType = RequestAbstractType
@@ -152,24 +152,24 @@ instance XP.XmlPickler StatusCode1 where
 
 data StatusCode2
   = StatusAuthnFailed
-  | StatusInvalidAttrNameOrValue  
-  | StatusInvalidNameIDPolicy     
-  | StatusNoAuthnContext          
-  | StatusNoAvailableIDP          
-  | StatusNoPassive               
-  | StatusNoSupportedIDP          
-  | StatusPartialLogout           
-  | StatusProxyCountExceeded      
-  | StatusRequestDenied           
-  | StatusRequestUnsupported      
+  | StatusInvalidAttrNameOrValue
+  | StatusInvalidNameIDPolicy
+  | StatusNoAuthnContext
+  | StatusNoAvailableIDP
+  | StatusNoPassive
+  | StatusNoSupportedIDP
+  | StatusPartialLogout
+  | StatusProxyCountExceeded
+  | StatusRequestDenied
+  | StatusRequestUnsupported
   | StatusRequestVersionDeprecated
-  | StatusRequestVersionTooHigh   
-  | StatusRequestVersionTooLow    
-  | StatusResourceNotRecognized   
-  | StatusTooManyResponses        
-  | StatusUnknownAttrProfile      
-  | StatusUnknownPrincipal        
-  | StatusUnsupportedBinding      
+  | StatusRequestVersionTooHigh
+  | StatusRequestVersionTooLow
+  | StatusResourceNotRecognized
+  | StatusTooManyResponses
+  | StatusUnknownAttrProfile
+  | StatusUnknownPrincipal
+  | StatusUnsupportedBinding
   deriving (Eq, Bounded, Enum, Show)
 
 instance Identifiable URI StatusCode2 where
@@ -659,14 +659,14 @@ instance SAMLResponse NameIDMappingResponse where
 
 data AnyRequest
   = RequestAssertionIDRequest   !AssertionIDRequest
-  | RequestAuthnQuery           !AuthnQuery 
-  | RequestAttributeQuery       !AttributeQuery 
-  | RequestAuthzDecisionQuery   !AuthzDecisionQuery 
+  | RequestAuthnQuery           !AuthnQuery
+  | RequestAttributeQuery       !AttributeQuery
+  | RequestAuthzDecisionQuery   !AuthzDecisionQuery
   | RequestAuthnRequest         !AuthnRequest
-  | RequestArtifactResolve      !ArtifactResolve 
-  | RequestManageNameIDRequest  !ManageNameIDRequest 
-  | RequestLogoutRequest        !LogoutRequest 
-  | RequestNameIDMappingRequest !NameIDMappingRequest 
+  | RequestArtifactResolve      !ArtifactResolve
+  | RequestManageNameIDRequest  !ManageNameIDRequest
+  | RequestLogoutRequest        !LogoutRequest
+  | RequestNameIDMappingRequest !NameIDMappingRequest
   deriving (Eq, Show)
 
 instance XP.XmlPickler AnyRequest where
@@ -717,8 +717,8 @@ instance SAMLRequest AnyRequest where
     s (RequestNameIDMappingRequest r) q = RequestNameIDMappingRequest $ samlRequest' .~ q $ r
 
 data AnyResponse
-  = ResponseResponse         !Response 
-  | ResponseArtifactResponse !ArtifactResponse 
+  = ResponseResponse         !Response
+  | ResponseArtifactResponse !ArtifactResponse
   deriving (Eq, Show)
 
 instance XP.XmlPickler AnyResponse where
@@ -739,7 +739,7 @@ instance SAMLResponse AnyResponse where
     g (ResponseArtifactResponse r) = r ^. samlResponse'
     s (ResponseResponse         r) q = ResponseResponse         $ samlResponse' .~ q $ r
     s (ResponseArtifactResponse r) q = ResponseArtifactResponse $ samlResponse' .~ q $ r
-    
+
 data AnyProtocol
   = ProtocolRequest  !AnyRequest
   | ProtocolResponse !AnyResponse
