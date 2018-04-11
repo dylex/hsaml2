@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- SAML and XML Signature Syntax and Processing
 --
@@ -8,6 +9,7 @@ module SAML2.Core.Signature
   , verifySAMLProtocol'
   ) where
 
+import Control.Exception
 import Control.Lens ((^.), (.~))
 import Control.Monad (unless)
 import qualified Data.ByteString.Lazy as BSL
@@ -62,6 +64,9 @@ verifySAMLProtocol b = do
 verifySAMLProtocol' :: SAMLP.SAMLProtocol a => DS.PublicKeys -> XmlTree -> IO a
 verifySAMLProtocol' pubkeys x = do
   m <- either fail return $ docToSAML x
-  v <- DS.verifySignature pubkeys (DS.signedID m) x
-  unless (or v) $ fail "verifySAMLProtocol: invalid or missing signature"
-  return m
+  v :: Either SomeException (Maybe Bool) <- try $ DS.verifySignature pubkeys (DS.signedID m) x
+  case v of
+    Left e             -> fail $ "signature verification failed: " ++ show e
+    Right Nothing      -> fail "signature verification failed: no matching key/alg pair."
+    Right (Just False) -> fail "signature verification failed: verification failed."
+    Right (Just True)  -> pure m
