@@ -149,6 +149,7 @@ signBytes (SigningKeyDSA k) b = do
 signBytes (SigningKeyRSA k) b =
   either (fail . show) return =<< RSA.signSafer (Just SHA1) (RSA.toPrivateKey k) b
 
+-- | indicate verification result; return 'Nothing' if no matching key/alg pair is found
 verifyBytes :: PublicKeys -> IdentifiedURI SignatureAlgorithm -> BS.ByteString -> BS.ByteString -> Maybe Bool
 verifyBytes PublicKeys{ publicKeyDSA = Just k } (Identified SignatureDSA_SHA1) sig m = Just $
   BS.length sig == 40 &&
@@ -177,6 +178,10 @@ generateSignature sk si = do
     , signatureObject = []
     }
 
+-- Exception in IO:  something is syntactically wrong with the input
+-- Nothing:          no matching key/alg pairs found
+-- Just False:       signature verification failed || dangling refs || explicit ref is not among the signed ones
+-- Just True:        everything is ok!
 verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Maybe Bool)
 verifySignature pks xid doc = do
   x <- case HXT.runLA (getID xid) doc of
@@ -189,8 +194,11 @@ verifySignature pks xid doc = do
   six <- applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [x]
   rl <- mapM (`verifyReference` x) (signedInfoReference si)
   let keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo s)
-  return $ ((any (Just xid ==) rl && all isJust rl) &&)
-    <$> verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod si) (signatureValue $ signatureSignatureValue s) six
+      verified :: Maybe Bool
+      verified = verifyBytes keys (signatureMethodAlgorithm $ signedInfoSignatureMethod si) (signatureValue $ signatureSignatureValue s) six
+      valid :: Bool
+      valid = elem (Just xid) rl && all isJust rl
+  return $ (valid &&) <$> verified
   where
   child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
   keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
