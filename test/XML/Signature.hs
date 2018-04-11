@@ -2,6 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module XML.Signature (tests) where
 
+import Control.Exception (SomeException, try)
+import Data.Either (isLeft)
 import qualified Crypto.PubKey.DSA as DSA
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Time
@@ -179,8 +181,21 @@ signVerifyTests = U.test
       req' <- signSAMLProtocol privkey1 req
       let reqlbs = samlToXML req'
       req'' :: AuthnRequest <- verifySAMLProtocol reqlbs
-      U.assertEqual "AuthnRequest" req' req''
+      U.assertEqual "AuthnRequest with verifySAMLProtocol (no pubkeys)" req' req''
 
+  , U.TestCase $ do
+      let req = somereq
+      req' <- signSAMLProtocol privkey1 req
+      let reqdoc = samlToDoc req'
+      req'' :: AuthnRequest <- verifySAMLProtocol' pubkey1 reqdoc
+      U.assertEqual "AuthnRequest with verifySAMLProtocol' (matching pubkeys)" req' req''
+
+  , U.TestCase $ do
+      let req = somereq
+      req' <- signSAMLProtocol privkey1 req
+      let reqdoc = samlToDoc req'
+      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' pubkey2 reqdoc
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys)" $ isLeft req''
   ]
 
 {-# NOINLINE keypair1 #-}
@@ -192,8 +207,8 @@ keypair2 :: (SigningKey, PublicKeys)
 keypair2 = unsafePerformIO mkkeypair
 
 privkey1, _privkey2 :: SigningKey
-_pubkey1, _pubkey2 :: PublicKeys
-((privkey1, _pubkey1), (_privkey2, _pubkey2)) = (keypair1, keypair2)
+pubkey1, pubkey2 :: PublicKeys
+((privkey1, pubkey1), (_privkey2, pubkey2)) = (keypair1, keypair2)
 
 mkkeypair :: IO (SigningKey, PublicKeys)
 mkkeypair = do

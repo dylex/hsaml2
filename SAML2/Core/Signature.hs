@@ -5,6 +5,7 @@
 module SAML2.Core.Signature
   ( signSAMLProtocol
   , verifySAMLProtocol
+  , verifySAMLProtocol'
   ) where
 
 import Control.Lens ((^.), (.~))
@@ -12,6 +13,7 @@ import Control.Monad (unless)
 import qualified Data.ByteString.Lazy as BSL
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Network.URI (URI(uriFragment), nullURI)
+import Text.XML.HXT.DOM.TypeDefs
 
 import SAML2.XML
 import qualified SAML2.XML.Canonical as C14N
@@ -50,5 +52,16 @@ verifySAMLProtocol b = do
   x <- maybe (fail "invalid XML") return $ xmlToDoc b
   m <- either fail return $ docToSAML x
   v <- DS.verifySignature mempty (DS.signedID m) x
+  unless (or v) $ fail "verifySAMLProtocol: invalid or missing signature"
+  return m
+
+-- | A variant of 'verifySAMLProtocol' that is more symmetric to 'signSAMLProtocol'.  The reason it
+-- takes an 'XmlTree' and not an @a@ is that signature verification needs both.
+--
+-- TODO: Should this replace 'verifySAMLProtocol'?
+verifySAMLProtocol' :: SAMLP.SAMLProtocol a => DS.PublicKeys -> XmlTree -> IO a
+verifySAMLProtocol' pubkeys x = do
+  m <- either fail return $ docToSAML x
+  v <- DS.verifySignature pubkeys (DS.signedID m) x
   unless (or v) $ fail "verifySAMLProtocol: invalid or missing signature"
   return m
