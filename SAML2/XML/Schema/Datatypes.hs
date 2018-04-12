@@ -13,6 +13,7 @@ import qualified Data.ByteString.Base64 as B64
 import Data.Char (isDigit)
 import Data.Char.Properties.XMLCharProps (isXmlSpaceChar, isXmlNameChar)
 import Data.Fixed (Pico, showFixed)
+import Data.List (elemIndex)
 import qualified Data.Time.Clock as Time
 import Data.Time.Format (formatTime, parseTimeM, defaultTimeLocale)
 import Data.Word (Word16)
@@ -76,14 +77,22 @@ type DateTime = Time.UTCTime
 xpDateTime :: XP.PU DateTime
 xpDateTime = XP.PU
   { XP.theSchema = XPS.scDTxsd XSD.xsd_dateTime []
-  , XP.appPickle = XP.putCont . XN.mkText . formatTime defaultTimeLocale fmtz
+  , XP.appPickle = XP.putCont . XN.mkText . tweakTimeString . formatTime defaultTimeLocale fmtz
   , XP.appUnPickle = XP.getCont >>= XP.liftMaybe "dateTime expects text" . XN.getText >>= parseTimeM True defaultTimeLocale fmtz
   }
   where
-  -- adding '%Q' may be longer than 7 digits, which makes MicrosoftS(tm) Azure(tm) choke.  timezone
-  -- must be 'Z', and MicrosoftS(tm) Azure(tm) will choke when it is ommitted.  (error messages are
-  -- utterly unhelpful.)
-  fmtz = "%Y-%m-%dT%H:%M:%SZ"
+  -- timezone must be 'Z', and MicrosoftS(tm) Azure(tm) will choke when it is ommitted.  (error
+  -- messages are utterly unhelpful.)
+  fmtz = "%Y-%m-%dT%H:%M:%S%QZ"
+
+  -- adding '%Q' may be longer than 7 digits, which makes MicrosoftS(tm) Azure(tm) choke.
+  tweakTimeString :: String -> String
+  tweakTimeString s = case elemIndex '.' s of
+    Nothing -> s
+    Just i -> case splitAt i s of
+      (t, u) -> case splitAt 8 u of
+        (_, "") -> t ++ u
+        (v, _)  -> t ++ v ++ "Z"
 
 -- |§3.2.16
 type Base64Binary = BS.ByteString
