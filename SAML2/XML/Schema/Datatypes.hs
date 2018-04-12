@@ -57,7 +57,7 @@ xpDuration = XP.xpWrapEither
   prd ('+':s) = prp s
   prd s = prp s
   prp ('P':s) = pru (0 :: Pico) prt [('Y',31556952),('M',2629746),('D',86400)] s
-  prp _ = Nothing 
+  prp _ = Nothing
   prt x "" = Just x
   prt x ('T':s) = pru x prs [('H',3600),('M',60)] s
   prt _ _ = Nothing
@@ -96,7 +96,7 @@ xpBase64Binary = XP.xpWrapEither
 type AnyURI = URI.URI
 
 xpAnyURI :: XP.PU AnyURI
-xpAnyURI = XP.xpWrapEither 
+xpAnyURI = XP.xpWrapEither
   ( maybe (Left "invalid anyURI") Right . URI.parseURIReference
   , \u -> URI.uriToString id u "")
   $ XP.xpText0DT $ XPS.scDTxsd XSD.xsd_anyURI []
@@ -173,4 +173,3 @@ xpPositiveInteger = XP.xpWrapEither
   ( \x -> if x > 0 then Right x else Left "0 is not positive"
   , id
   ) $ XP.xpPrim{ XP.theSchema = XPS.scDTxsd XSD.xsd_positiveInteger [] }
-
