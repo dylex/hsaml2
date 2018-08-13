@@ -23,6 +23,7 @@ module SAML2.XML
   , docToXML
   , xmlToSAML
   , xmlToDoc
+  , xmlToDocE
   ) where
 
 import qualified Data.ByteString.Lazy as BSL
@@ -32,6 +33,7 @@ import qualified Data.Invertible as Inv
 import Data.Maybe (listToMaybe)
 import Network.URI (URI)
 import qualified Text.XML.HXT.Core as HXT
+import qualified Data.Tree.NTree.TypeDefs as HXT
 
 import SAML2.XML.Types
 import SAML2.Core.Datatypes
@@ -104,7 +106,21 @@ samlToXML :: XP.XmlPickler a => a -> BSL.ByteString
 samlToXML = docToXML . samlToDoc
 
 xmlToDoc :: BSL.ByteString -> Maybe HXT.XmlTree
-xmlToDoc = listToMaybe . HXT.runLA
+xmlToDoc = either (const Nothing) Just . xmlToDocE
+
+xmlToDocE :: BSL.ByteString -> Either String HXT.XmlTree
+xmlToDocE = fix . xmlToDocBroken
+  where
+    fix Nothing =
+      Left "Nothing"
+    fix (Just (HXT.NTree (HXT.XError num msg) shouldBeEmpty)) =
+      Left $ show num ++ ": " ++ msg ++ (if (null shouldBeEmpty) then "" else show shouldBeEmpty)
+    fix (Just good) =
+      Right good
+
+-- | this is broken and returns xml trees containing parse errors on occasion.
+xmlToDocBroken :: BSL.ByteString -> Maybe HXT.XmlTree
+xmlToDocBroken = listToMaybe . HXT.runLA
   (HXT.xreadDoc
   HXT.>>> HXT.removeWhiteSpace
   HXT.>>> HXT.neg HXT.isXmlPi

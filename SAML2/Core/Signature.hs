@@ -9,9 +9,7 @@ module SAML2.Core.Signature
   , verifySAMLProtocol'
   ) where
 
-import Control.Exception
 import Control.Lens ((^.), (.~))
-import Control.Monad (unless)
 import qualified Data.ByteString.Lazy as BSL
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Network.URI (URI(uriFragment), nullURI)
@@ -54,8 +52,9 @@ verifySAMLProtocol b = do
   x <- maybe (fail "invalid XML") return $ xmlToDoc b
   m <- either fail return $ docToSAML x
   v <- DS.verifySignature mempty (DS.signedID m) x
-  unless (or v) $ fail "verifySAMLProtocol: invalid or missing signature"
-  return m
+  case v of
+    Left msg -> fail $ "verifySAMLProtocol: invalid or missing signature: " ++ show msg
+    Right () -> return m
 
 -- | A variant of 'verifySAMLProtocol' that is more symmetric to 'signSAMLProtocol'.  The reason it
 -- takes an 'XmlTree' and not an @a@ is that signature verification needs both.
@@ -64,9 +63,5 @@ verifySAMLProtocol b = do
 verifySAMLProtocol' :: SAMLP.SAMLProtocol a => DS.PublicKeys -> XmlTree -> IO a
 verifySAMLProtocol' pubkeys x = do
   m <- either fail return $ docToSAML x
-  v :: Either SomeException (Maybe Bool) <- try $ DS.verifySignature pubkeys (DS.signedID m) x
-  case v of
-    Left e             -> fail $ "signature verification failed: " ++ show e
-    Right Nothing      -> fail "signature verification failed: no matching key/alg pair."
-    Right (Just False) -> fail "signature verification failed: verification failed."
-    Right (Just True)  -> pure m
+  v <- DS.verifySignature pubkeys (DS.signedID m) x
+  either (fail . show) (const $ pure m) v
