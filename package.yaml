@@ -38,6 +38,7 @@ dependencies:
   - network-uri
   - process
   - semigroups
+  - string-conversions
   - template-haskell
   - time
   - x509

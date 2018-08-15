@@ -19,6 +19,8 @@ module SAML2.XML.Signature
   , verifyBase64
   , generateSignature
   , verifySignature, SignatureError(..)
+  , applyCanonicalization
+  , applyTransforms
   ) where
 
 import Control.Applicative ((<|>))
@@ -38,6 +40,7 @@ import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Either (isRight)
 import Data.Semigroup (Semigroup(..))
+import Data.String.Conversions hiding ((<>))
 import Data.Monoid (Monoid(..))
 import qualified Data.X509 as X509
 import Network.URI (URI(..))
@@ -62,7 +65,7 @@ applyCanonicalization m = fail $ "applyCanonicalization: unsupported " ++ show m
 
 applyTransformsBytes :: [Transform] -> BSL.ByteString -> IO BSL.ByteString
 applyTransformsBytes [] = return
-applyTransformsBytes (t : _) = fail ("applyTransforms: unsupported Signature " ++ show t)
+applyTransformsBytes ts@(_:_) = fail ("applyTransforms: unsupported Signature " ++ show ts)
 
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
 applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x : tl) =
@@ -98,9 +101,14 @@ verifyReference r doc = case referenceURI r of
     case HXT.runLA (getID xid) doc of
       x@[_] -> do
         t <- applyTransforms (referenceTransforms r) $ DOM.mkRoot [] x
-        return $ if (applyDigest (referenceDigestMethod r) t == referenceDigestValue r)
+        let have = applyDigest (referenceDigestMethod r) t
+            want = referenceDigestValue r
+        return $ if have == want
           then Right xid
-          else Left "digest mismatch"
+          else Left $ "digest mismatch:" <>
+                      "\nhave: "  <> cs have <>
+                      "\nwant: " <> cs want <>
+                      "\nmethod: " <> show (referenceDigestMethod r)
       bad -> return . Left $ "reference has " <> show (length bad) <> " matches, should have 1."
   bad -> return . Left $ "bad referenceURI: " <> show bad
 
@@ -120,7 +128,7 @@ instance Semigroup PublicKeys where
 
 instance Monoid PublicKeys where
   mempty = PublicKeys Nothing Nothing
-  mappend = ((<>))
+  mappend = (<>)
 
 signingKeySignatureAlgorithm :: SigningKey -> SignatureAlgorithm
 signingKeySignatureAlgorithm (SigningKeyDSA _) = SignatureDSA_SHA1
@@ -197,7 +205,7 @@ generateSignature sk si = do
 --
 -- Exception in IO:  something is syntactically wrong with the input
 -- Nothing:          no matching key/alg pairs found
--- Just False:       signature verification failed || dangling refs || explicit ref is not among the signed ones
+-- Just False:       signature verification failed || bad refs || explicit ref is not among the signed ones
 -- Just True:        everything is ok!
 _verifySignatureOld :: PublicKeys -> String -> HXT.XmlTree -> IO (Maybe Bool)
 _verifySignatureOld pks xid doc = do
@@ -258,7 +266,7 @@ verifySignature pks xid doc = runExceptT $ do
   when (null rl) $
     throwError . SignatureVerifyNoReferences $ show rl
   unless (all isRight rl) $
-    throwError . SignatureVerifyDanglingReferences $ show (signedInfoReference si, rl)
+    throwError . SignatureVerifyBadReferences $ show (signedInfoReference si, rl)
   unless (elem (Right xid) rl) $
     throwError . SignatureVerifyInputNotReferenced $ show rl
 
@@ -267,8 +275,8 @@ verifySignature pks xid doc = runExceptT $ do
         alg  = signatureMethodAlgorithm $ signedInfoSignatureMethod si
         dig  = signatureValue $ signatureSignatureValue s
     case verifyBytes keys alg dig six of
-      Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig)
-      Just False -> throwError . SignatureVerificationCryptoFailed $ show (keys, alg, dig)
+      Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig, six)
+      Just False -> throwError . SignatureVerificationCryptoFailed      $ show (keys, alg, dig, six)
       Just True  -> pure ()
 
   where
@@ -293,7 +301,7 @@ data SignatureError =
   | SignatureCanonicalizationError String
   | SignatureVerifyReferenceError String
   | SignatureVerifyNoReferences String
-  | SignatureVerifyDanglingReferences String
+  | SignatureVerifyBadReferences String
   | SignatureVerifyInputNotReferenced String
   | SignatureVerificationCryptoUnsupported String
   | SignatureVerificationCryptoFailed String
