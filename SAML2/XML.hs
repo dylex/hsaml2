@@ -26,6 +26,7 @@ module SAML2.XML
   , xmlToDocE
   ) where
 
+import qualified Text.XML.HXT.DOM.ShowXml
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Default (Default(..))
@@ -99,8 +100,15 @@ samlToDoc = head
   . HXT.runLA (HXT.processChildren $ HXT.cleanupNamespaces HXT.collectPrefixUriPairs)
   . XP.pickleDoc XP.xpickle
 
+-- | see 'docToXML''
 docToXML :: HXT.XmlTree -> BSL.ByteString
 docToXML = BSL.concat . HXT.runLA (HXT.xshowBlob HXT.getChildren)
+
+-- | 'docToXML' chops off the root element from the tree.  'docToXML'' does not do this.  it may
+-- make sense to remove 'docToXML', but since i don't understand this code enough to be confident
+-- not to break anything, i'll just leave this extra function for reference.
+docToXML' :: HXT.XmlTree -> BSL.ByteString
+docToXML' = Text.XML.HXT.DOM.ShowXml.xshowBlob . (:[])
 
 samlToXML :: XP.XmlPickler a => a -> BSL.ByteString
 samlToXML = docToXML . samlToDoc

@@ -62,7 +62,7 @@ applyCanonicalization m = fail $ "applyCanonicalization: unsupported " ++ show m
 
 applyTransformsBytes :: [Transform] -> BSL.ByteString -> IO BSL.ByteString
 applyTransformsBytes [] = return
-applyTransformsBytes (t : _) = fail ("applyTransforms: unsupported Signature " ++ show t)
+applyTransformsBytes ts@(_:_) = fail ("applyTransforms: unsupported Signature " ++ show ts)
 
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
 applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x : tl) =
@@ -197,7 +197,7 @@ generateSignature sk si = do
 --
 -- Exception in IO:  something is syntactically wrong with the input
 -- Nothing:          no matching key/alg pairs found
--- Just False:       signature verification failed || dangling refs || explicit ref is not among the signed ones
+-- Just False:       signature verification failed || bad refs || explicit ref is not among the signed ones
 -- Just True:        everything is ok!
 _verifySignatureOld :: PublicKeys -> String -> HXT.XmlTree -> IO (Maybe Bool)
 _verifySignatureOld pks xid doc = do
@@ -258,7 +258,7 @@ verifySignature pks xid doc = runExceptT $ do
   when (null rl) $
     throwError . SignatureVerifyNoReferences $ show rl
   unless (all isRight rl) $
-    throwError . SignatureVerifyDanglingReferences $ show (signedInfoReference si, rl)
+    throwError . SignatureVerifyBadReferences $ show (signedInfoReference si, rl)
   unless (elem (Right xid) rl) $
     throwError . SignatureVerifyInputNotReferenced $ show rl
 
@@ -293,7 +293,7 @@ data SignatureError =
   | SignatureCanonicalizationError String
   | SignatureVerifyReferenceError String
   | SignatureVerifyNoReferences String
-  | SignatureVerifyDanglingReferences String
+  | SignatureVerifyBadReferences String
   | SignatureVerifyInputNotReferenced String
   | SignatureVerificationCryptoUnsupported String
   | SignatureVerificationCryptoFailed String
