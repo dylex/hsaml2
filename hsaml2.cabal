@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fee3a64cce5a524417140763492aa978efd75314b749b45468a199b055bb142d
+-- hash: 9e2ef55aa556d1418c17d5a8daa5e6bb44d531c84bf35c8967e1d8f5086c91d7
 
 name:           hsaml2
 version:        0.1
@@ -85,6 +85,7 @@ library
     , network-uri
     , process
     , semigroups
+    , string-conversions
     , template-haskell
     , time
     , x509
@@ -132,6 +133,7 @@ test-suite spec
     , network-uri
     , process
     , semigroups
+    , string-conversions
     , template-haskell
     , time
     , x509
