@@ -13,6 +13,8 @@ module SAML2.Core.Assertions where
 
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
+import Data.Semigroup (Semigroup)
+
 import SAML2.Lens
 import SAML2.XML
 import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
@@ -445,7 +447,7 @@ instance XP.XmlPickler Action where
 
 -- |§2.7.4.3
 newtype Evidence = Evidence{ evidence :: [AssertionRef] }
-  deriving (Eq, Show, Monoid)
+  deriving (Eq, Show, Semigroup, Monoid)
 
 instance XP.XmlPickler Evidence where
   xpickle = [XP.biCase|

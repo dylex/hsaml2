@@ -11,6 +11,7 @@
 module SAML2.Metadata.Metadata where
 
 import Data.Foldable (fold)
+import Data.Semigroup (Semigroup)
 import qualified Network.URI as URI
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
@@ -149,7 +150,7 @@ instance DS.Signable Metadata where
 
 -- |§2.3.1 empty list means missing
 newtype Extensions = Extensions{ extensions :: Nodes }
-  deriving (Eq, Show, Monoid)
+  deriving (Eq, Show, Semigroup, Monoid)
 
 instance XP.XmlPickler Extensions where
   xpickle = XP.xpDefault (Extensions []) $

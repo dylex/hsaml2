@@ -377,7 +377,7 @@ data AuthnRequest = AuthnRequest
 
 data AssertionConsumerService
   = AssertionConsumerServiceIndex XS.UnsignedShort
-  | AssertionConsumerServiceURL
+  | AssertionConsumerServiceURL  -- this looks very much like it wants to be an Either?
     { authnRequestAssertionConsumerServiceURL :: Maybe AnyURI
     , authnRequestProtocolBinding :: Maybe (IdentifiedURI Binding)
     }
