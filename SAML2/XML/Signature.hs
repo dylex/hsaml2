@@ -120,7 +120,7 @@ instance Semigroup PublicKeys where
 
 instance Monoid PublicKeys where
   mempty = PublicKeys Nothing Nothing
-  mappend = ((<>))
+  mappend = (<>)
 
 signingKeySignatureAlgorithm :: SigningKey -> SignatureAlgorithm
 signingKeySignatureAlgorithm (SigningKeyDSA _) = SignatureDSA_SHA1
