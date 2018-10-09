@@ -564,7 +564,7 @@ data LogoutRequest = LogoutRequest
   , logoutRequestReason :: Maybe (Identified XString LogoutReason)
   , logoutRequestNotOnOrAfter :: Maybe XS.DateTime
   , logoutRequestIdentifier :: SAML.PossiblyEncrypted SAML.Identifier
-  , logoutRequestSessionIndex :: Maybe XString
+  , logoutRequestSessionIndex :: [XString]
   } deriving (Eq, Show)
 
 instance XP.XmlPickler LogoutRequest where
@@ -574,7 +574,7 @@ instance XP.XmlPickler LogoutRequest where
       XP.>*< XP.xpAttrImplied "Reason" XP.xpickle
       XP.>*< XP.xpAttrImplied "NotOnOrAfter" XS.xpDateTime
       XP.>*< SAML.xpPossiblyEncrypted
-      XP.>*< XP.xpOption (xpElem "SessionIndex" XS.xpString))
+      XP.>*< XP.xpList (xpElem "SessionIndex" XS.xpString))
 instance DS.Signable LogoutRequest where
   signature' = samlProtocol' . DS.signature'
   signedID = protocolID . view samlProtocol'
