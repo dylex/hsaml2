@@ -243,9 +243,16 @@ _verifySignatureOld pks xid doc = do
 verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Either SignatureError ())
 verifySignature pks xid doc = runExceptT $ do
   signedSubtree :: HXT.XmlTree
-    <- case HXT.runLA (getID xid) doc of
-      [x] -> return x
-      _ -> throwError SignedElementNotFound
+    <- do
+        mdoc' <- liftIO . try $ fixNamespaces doc
+        doc' <- case mdoc' of
+          Right x
+            -> pure x
+          Left (err :: SomeException)
+            -> throwError . SignatureParseError $ "failed to canonicalize input: " <> show err
+        case HXT.runLA (getID xid) doc' of
+          [x] -> return x
+          _ -> throwError SignedElementNotFound
 
   signatureElem@Signature{ signatureSignedInfo = si } :: Signature
     <- do
@@ -295,6 +302,22 @@ verifySignature pks xid doc = runExceptT $ do
       Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig, six)
       Just False -> throwError . SignatureVerificationCryptoFailed      $ show (keys, alg, dig, six)
       Just True  -> pure ()
+
+
+-- | if name spaces that are declared in doc and used in the signed subtree, we need to copy
+-- the declarations into the part the subtree to make it self-contained.  the easiest way to
+-- impleemnt that is to use a xml:dsig canonicalization function and do another few rounds of
+-- rendering and parsing.
+--
+-- TODO: there may be a cleaner way to do this.  i know that xml-conduit isn't very interested
+-- in getting name spaces right, and HXT doesn't seem to be very successful at it either, but
+-- it may just be that i'm unaware of the regions of the HXT jungle that do this.
+fixNamespaces :: HXT.XmlTree -> IO HXT.XmlTree
+fixNamespaces doc = do
+  can :: SBS
+    <- liftIO $ canonicalize (CanonicalXMLExcl10 False) Nothing Nothing doc
+  maybe (throwIO $ ErrorCall "canonicalized xml cannot be parsed back") pure $
+    xmlToDoc (cs can)
 
 
 data SignatureError =
