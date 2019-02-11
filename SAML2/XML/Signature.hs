@@ -242,19 +242,22 @@ _verifySignatureOld pks xid doc = do
 -- use this if you want to verify signatures, and ignore the rest of this module if you can.
 verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Either SignatureError ())
 verifySignature pks xid doc = runExceptT $ do
-  x :: HXT.XmlTree
+  signedSubtree :: HXT.XmlTree
     <- case HXT.runLA (getID xid) doc of
       [x] -> return x
       _ -> throwError SignedElementNotFound
-  sx :: HXT.XmlTree
-    <- let child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
-       in case child "Signature" x of
-      [sx] -> return sx
-      _ -> throwError SignatureNotFoundOrEmpty
-  s@Signature{ signatureSignedInfo = si } :: Signature
-    <- case docToSAML sx of
-      Left err -> throwError . SignatureParseError $ show err
-      Right v -> pure v
+
+  signatureElem@Signature{ signatureSignedInfo = si } :: Signature
+    <- do
+        sx :: HXT.XmlTree
+          <- let child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
+             in case child "Signature" signedSubtree of
+            [sx] -> return sx
+            _ -> throwError SignatureNotFoundOrEmpty
+
+        case docToSAML sx of
+          Left err -> throwError . SignatureParseError $ show err
+          Right v -> pure v
 
   six :: BS.ByteString {- SignedInfo element -}
     <- let xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
@@ -262,10 +265,10 @@ verifySignature pks xid doc = runExceptT $ do
                xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
                xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
        in failWith SignatureCanonicalizationError
-          $ (applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [x])
+          $ (applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
   rl :: NonEmpty.NonEmpty (Either String String)
     <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference si) <>))
-      $ mapM (`verifyReference` x) (signedInfoReference si)
+      $ mapM (`verifyReference` signedSubtree) (signedInfoReference si)
 
   unless (all isRight rl) $
     throwError . SignatureVerifyBadReferences $ show (signedInfoReference si, rl)
@@ -273,7 +276,7 @@ verifySignature pks xid doc = runExceptT $ do
     throwError . SignatureVerifyInputNotReferenced $ show rl
 
   do
-    let keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo s)
+    let keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo signatureElem)
           where
             keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
             keyinfo (X509Data l) = foldMap keyx509d l
@@ -286,7 +289,7 @@ verifySignature pks xid doc = runExceptT $ do
             keyinfo _ = mempty
 
         alg :: IdentifiedURI SignatureAlgorithm = signatureMethodAlgorithm $ signedInfoSignatureMethod si
-        dig :: Base64Binary = signatureValue $ signatureSignatureValue s
+        dig :: Base64Binary = signatureValue $ signatureSignatureValue signatureElem
 
     case verifyBytes keys alg dig six of
       Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig, six)
