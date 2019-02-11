@@ -260,8 +260,6 @@ verifySignature pks xid doc = runExceptT $ do
     <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference si) <>))
       $ mapM (`verifyReference` x) (signedInfoReference si)
 
-  when (null rl) $
-    throwError . SignatureVerifyNoReferences $ show rl
   unless (all isRight rl) $
     throwError . SignatureVerifyBadReferences $ show (signedInfoReference si, rl)
   unless (elem (Right xid) rl) $
@@ -297,7 +295,6 @@ data SignatureError =
   | SignatureParseError String
   | SignatureCanonicalizationError String
   | SignatureVerifyReferenceError String
-  | SignatureVerifyNoReferences String
   | SignatureVerifyBadReferences String
   | SignatureVerifyInputNotReferenced String
   | SignatureVerificationCryptoUnsupported String
