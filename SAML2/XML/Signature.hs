@@ -52,6 +52,7 @@ import SAML2.XML
 import SAML2.XML.Canonical
 import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 import SAML2.XML.Signature.Types
+import SAML2.XML.Schema.Datatypes (Base64Binary)
 
 isDSElem :: HXT.ArrowXml a => String -> a HXT.XmlTree HXT.XmlTree
 isDSElem n = HXT.isElem HXT.>>> HXT.hasQName (mkNName ns n)
@@ -246,16 +247,22 @@ verifySignature pks xid doc = runExceptT $ do
       [x] -> return x
       _ -> throwError SignedElementNotFound
   sx :: HXT.XmlTree
-    <- case child "Signature" x of
+    <- let child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
+       in case child "Signature" x of
       [sx] -> return sx
       _ -> throwError SignatureNotFoundOrEmpty
   s@Signature{ signatureSignedInfo = si } :: Signature
     <- case docToSAML sx of
       Left err -> throwError . SignatureParseError $ show err
       Right v -> pure v
-  six :: BS.ByteString
-    <- failWith SignatureCanonicalizationError
-      $ (applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [x])
+
+  six :: BS.ByteString {- SignedInfo element -}
+    <- let xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
+             where
+               xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
+               xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
+       in failWith SignatureCanonicalizationError
+          $ (applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [x])
   rl :: NonEmpty.NonEmpty (Either String String)
     <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference si) <>))
       $ mapM (`verifyReference` x) (signedInfoReference si)
@@ -267,26 +274,24 @@ verifySignature pks xid doc = runExceptT $ do
 
   do
     let keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo s)
-        alg  = signatureMethodAlgorithm $ signedInfoSignatureMethod si
-        dig  = signatureValue $ signatureSignatureValue s
+          where
+            keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
+            keyinfo (X509Data l) = foldMap keyx509d l
+              where
+                keyx509d (X509Certificate sc) = keyx509p $ X509.certPubKey $ X509.getCertificate sc
+                keyx509d _ = mempty
+                keyx509p (X509.PubKeyRSA r) = mempty{ publicKeyRSA = Just r }
+                keyx509p (X509.PubKeyDSA d) = mempty{ publicKeyDSA = Just d }
+                keyx509p _ = mempty
+            keyinfo _ = mempty
+
+        alg :: IdentifiedURI SignatureAlgorithm = signatureMethodAlgorithm $ signedInfoSignatureMethod si
+        dig :: Base64Binary = signatureValue $ signatureSignatureValue s
+
     case verifyBytes keys alg dig six of
       Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig, six)
       Just False -> throwError . SignatureVerificationCryptoFailed      $ show (keys, alg, dig, six)
       Just True  -> pure ()
-
-  where
-  child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
-  keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
-  keyinfo (X509Data l) = foldMap keyx509d l
-  keyinfo _ = mempty
-  keyx509d (X509Certificate sc) = keyx509p $ X509.certPubKey $ X509.getCertificate sc
-  keyx509d _ = mempty
-  keyx509p (X509.PubKeyRSA r) = mempty{ publicKeyRSA = Just r }
-  keyx509p (X509.PubKeyDSA d) = mempty{ publicKeyDSA = Just d }
-  keyx509p _ = mempty
-  xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
-  xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
-  xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
 
 
 data SignatureError =
