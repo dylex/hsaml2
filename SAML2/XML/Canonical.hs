@@ -57,6 +57,9 @@ instance XP.XmlPickler InclusiveNamespaces where
     XP.>$< XP.xpAttr "PrefixList" XS.xpNMTOKENS
 
 -- |Canonicalize and serialize an XML document
+--
+-- TODO: this is chopping off the root of the input and only considers the children, which is
+-- at best surprising.  we should change that.
 canonicalize :: CanonicalizationAlgorithm -> Maybe InclusiveNamespaces -> Maybe String -> HXT.XmlTree -> IO BS.ByteString
 canonicalize a i s =
   LibXML2.c14n (cm a) (inclusiveNamespacesPrefixList <$> i) (canonicalWithComments a) s

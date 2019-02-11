@@ -65,7 +65,7 @@ applyCanonicalization m = fail $ "applyCanonicalization: unsupported " ++ show m
 
 applyTransformsBytes :: [Transform] -> BSL.ByteString -> IO BSL.ByteString
 applyTransformsBytes [] = return
-applyTransformsBytes ts@(_:_) = fail ("applyTransforms: unsupported Signature " ++ show ts)
+applyTransformsBytes ts@(_:_) = fail ("applyTransforms: unsupported XML:DSig transform: " ++ show ts)
 
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
 applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x : tl) =
@@ -100,15 +100,12 @@ verifyReference r doc = case referenceURI r of
   Just URI{ uriScheme = "", uriAuthority = Nothing, uriPath = "", uriQuery = "", uriFragment = '#':xid } ->
     case HXT.runLA (getID xid) doc of
       x@[_] -> do
-        t <- applyTransforms (referenceTransforms r) $ DOM.mkRoot [] x
+        t :: LBS <- applyTransforms (referenceTransforms r) $ DOM.mkRoot [] x
         let have = applyDigest (referenceDigestMethod r) t
             want = referenceDigestValue r
         return $ if have == want
           then Right xid
-          else Left $ "digest mismatch:" <>
-                      "\nhave: "  <> cs have <>
-                      "\nwant: " <> cs want <>
-                      "\nmethod: " <> show (referenceDigestMethod r)
+          else Left "digest mismatch"
       bad -> return . Left $ "reference has " <> show (length bad) <> " matches, should have 1."
   bad -> return . Left $ "bad referenceURI: " <> show bad
 

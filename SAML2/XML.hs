@@ -21,6 +21,7 @@ module SAML2.XML
   , samlToXML
   , docToSAML
   , docToXML
+  , docToXML'
   , xmlToSAML
   , xmlToDoc
   , xmlToDocE
