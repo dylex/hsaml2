@@ -5,22 +5,24 @@ module SAML2.XML.LibXML2
   , c14n
   ) where
 
-import Control.Exception (bracket)
+import Control.Exception (bracket, throwIO, Exception)
 import Control.Monad ((<=<))
 import Data.Bits ((.|.))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Unsafe as BSU
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.String.Unicode (unicodeCharToUtf8')
 import Data.Word (Word8)
-import Foreign.C.Error (throwErrnoIf, throwErrnoIfNull)
+import Foreign.C.Error (throwErrnoIf, throwErrnoIfNull, getErrno, resetErrno, eOK, eNOTTY, errnoToIOError)
 import Foreign.C.String (CString, withCString)
 import Foreign.C.Types (CInt(..))
 import Foreign.ForeignPtr (ForeignPtr, newForeignPtr, withForeignPtr)
 import Foreign.Marshal (alloca, withArray0, withMany, maybeWith)
 import Foreign.Ptr (Ptr, FunPtr, nullPtr, castPtr)
 import Foreign.Storable (peek, peekByteOff)
+import System.IO.Silently (hCapture)
+import System.IO (stdout, stderr)
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.DOM.ShowXml as HXTS
 
@@ -63,16 +65,55 @@ newtype Doc = Doc{ unDoc :: ForeignPtr XMLDoc }
 newDoc :: Ptr XMLDoc -> IO Doc
 newDoc = fmap Doc . newForeignPtr xmlFreeDoc
 
+data FromBytesError =
+  FromBytesResult
+    { fromBytesErr        :: Maybe IOError
+    , fromBytesResultNull :: Bool
+    , fromBytesNoise      :: String
+    , fromBytesInput      :: BS.ByteString
+    }
+  deriving (Eq, Show)
+
+instance Exception FromBytesError
+
+-- | Call libxml2 parser and return the parsed C object, or throw an error.
 fromBytes :: BS.ByteString -> IO Doc
 fromBytes s = do
-  d <- BSU.unsafeUseAsCStringLen s $ \(p, l) ->
-    throwErrnoIfNull "xmlReadMemory" $
-      xmlReadMemory p (fromIntegral l) nullPtr nullPtr (#{const XML_PARSE_NOENT} .|. #{const XML_PARSE_DTDLOAD} .|. #{const XML_PARSE_DTDATTR} .|. #{const XML_PARSE_NONET} .|. #{const XML_PARSE_COMPACT})
-  newDoc d
+  resetErrno
+  let config :: CInt
+      config = #{const XML_PARSE_NOENT}   .|.
+               #{const XML_PARSE_DTDLOAD} .|.
+               #{const XML_PARSE_DTDATTR} .|.
+               #{const XML_PARSE_NONET}   .|.
+               #{const XML_PARSE_COMPACT}
+  (noise, d) <- BSU.unsafeUseAsCStringLen s $ \(p, l) ->
+    hCapture [stdout, stderr] $ xmlReadMemory p (fromIntegral l) nullPtr nullPtr config
+
+  let canonicalizeBenignErrnos e =
+        if e `elem` goodErrs
+        then Nothing
+        else Just $ errnoToIOError "fromBytes" e Nothing Nothing
+      goodErrs =
+        [ eOK
+        , eNOTTY  -- libxml2 appears to do something one of the std handles that does not work
+                  -- well with 'hCapture', but just ignoring this error here seems to do the
+                  -- trick.
+        ]
+  err <- canonicalizeBenignErrnos <$> getErrno
+
+  if d == nullPtr || isJust err || noise /= mempty
+    then throwIO $ FromBytesResult
+           { fromBytesErr        = err
+           , fromBytesResultNull = d == nullPtr
+           , fromBytesNoise      = noise
+           , fromBytesInput      = s
+           }
+    else newDoc d
 
 fromXmlTrees :: HXT.XmlTrees -> IO Doc
-fromXmlTrees = fromBytes . BSL.toStrict . HXTS.xshow' cq aq unicodeCharToUtf8'
+fromXmlTrees = fromBytes . BSL.toStrict . show_
   where
+  show_ = HXTS.xshow' cq aq unicodeCharToUtf8'  -- TODO: why not just @show_ = HXTS.xshowBlob@?
   cq '&'   = ("&amp;"  ++)
   cq '<'   = ("&lt;"   ++)
   cq '>'   = ("&gt;"   ++)
