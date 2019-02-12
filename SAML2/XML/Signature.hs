@@ -112,9 +112,9 @@ verifyReference r doc = case referenceURI r of
             want = referenceDigestValue r
         return $ if have == want
           then Right xid
-          else Left ("digest mismatch for #" <> xid)
-      bad -> return . Left $ "reference has " <> show (length bad) <> " matches, should have 1."
-  bad -> return . Left $ "bad referenceURI: " <> show bad
+          else Left $ "#" <> xid <> ": digest mismatch"
+      bad -> return . Left $ "#" <> xid <> ": has " <> show (length bad) <> " matches, should have 1."
+  bad -> return . Left $ "unexpected referenceURI: " <> show bad
 
 data SigningKey
   = SigningKeyDSA DSA.KeyPair
