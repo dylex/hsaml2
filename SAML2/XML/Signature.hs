@@ -99,8 +99,9 @@ generateReference r x = do
   return r
     { referenceDigestValue = d }
 
--- | Compute digest of a 'Reference' into an xml document.  If digest matches the one expected
--- by the 'Reference', return the xml ID; otherwise, return an error string.
+-- | Re-compute the digest (after transforms) of a 'Reference'd subtree of an xml document and
+-- compare it against the one given in the 'Reference'.  If it matches, return the xml ID;
+-- otherwise, return an error string.
 verifyReference :: HasCallStack => Reference -> HXT.XmlTree -> IO (Either String String)
 verifyReference r doc = case referenceURI r of
   Just URI{ uriScheme = "", uriAuthority = Nothing, uriPath = "", uriQuery = "", uriFragment = '#':xid } ->
@@ -245,6 +246,18 @@ _verifySignatureOld pks xid doc = do
 -- | take a public key and an xml node ID that points to the sub-tree that needs to be signed, and
 -- return @Right ()@ if it is signed with that key.  otherwise, return a (hopefully helpful) error.
 -- use this if you want to verify signatures, and ignore the rest of this module if you can.
+--
+-- how does this work?:
+--   * dig for the subtree of the input with an ID attribute containing xid (the "signed subtree")
+--   * parse the 'Sigature' subtree in that subtree (we only do envelopped signatures)
+--   * get the canonicalized 'SignedInfo' subtree of the signed subtree as bytestring.
+--   * call 'verifyReference' on all 'Reference's contained in the parsed signature to make sure input is intact.
+--   * call 'verifyBytes' on the canonicalized 'SignedInfo' to make sure the signature is valid.
+--
+-- the canonicalizations given in the signature are applied to the signed info; the transforms
+-- are applied to the signed subtrees.  (this is confusing because one of the transforms is
+-- usually a form of canonicalization, but it makes sense if you accept the premise that any
+-- of this does.)
 verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Either SignatureError ())
 verifySignature pks xid doc = runExceptT $ do
   signedSubtree :: HXT.XmlTree
@@ -259,7 +272,7 @@ verifySignature pks xid doc = runExceptT $ do
           [x] -> return x
           _ -> throwError SignedElementNotFound
 
-  signatureElem@Signature{ signatureSignedInfo = si } :: Signature
+  signatureElem@Signature{ signatureSignedInfo = signedInfoTyped } :: Signature
     <- do
         sx :: HXT.XmlTree
           <- let child n = HXT.runLA $ HXT.getChildren HXT.>>> isDSElem n HXT.>>> HXT.cleanupNamespaces HXT.collectPrefixUriPairs
@@ -278,15 +291,15 @@ verifySignature pks xid doc = runExceptT $ do
                xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
        in failWith SignatureCanonicalizationError
           . capture' "applyCanonicalization"
-          $ (applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
+          $ (applyCanonicalization (signedInfoCanonicalizationMethod signedInfoTyped) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
 
   referenceChecks :: NonEmpty.NonEmpty (Either String String)
-    <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference si) <>))
+    <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference signedInfoTyped) <>))
       . capture' "verifyReference"
-      $ mapM (`verifyReference` signedSubtree) (signedInfoReference si)
+      $ mapM (`verifyReference` signedSubtree) (signedInfoReference signedInfoTyped)
 
   unless (all isRight referenceChecks) $
-    throwError . SignatureVerifyBadReferences $ show (signedInfoReference si, referenceChecks)
+    throwError . SignatureVerifyBadReferences $ show (signedInfoReference signedInfoTyped, referenceChecks)
   unless (elem (Right xid) referenceChecks) $
     throwError . SignatureVerifyInputNotReferenced $ show referenceChecks
 
@@ -305,7 +318,7 @@ verifySignature pks xid doc = runExceptT $ do
             keyinfo _ = mempty
 
         alg :: IdentifiedURI SignatureAlgorithm
-        alg = signatureMethodAlgorithm $ signedInfoSignatureMethod si
+        alg = signatureMethodAlgorithm $ signedInfoSignatureMethod signedInfoTyped
 
         dig :: Base64Binary
         dig = signatureValue $ signatureSignatureValue signatureElem
