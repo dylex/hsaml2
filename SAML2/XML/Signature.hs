@@ -1,10 +1,10 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase       #-}
-{-# LANGUAGE RankNTypes       #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns     #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE ViewPatterns        #-}
 -- |
 -- XML Signature Syntax and Processing
 --
@@ -23,8 +23,11 @@ module SAML2.XML.Signature
   , applyTransforms
   ) where
 
+import GHC.Stack
+import System.IO.Silently (hCapture)
+import System.IO (stdout, stderr)
 import Control.Applicative ((<|>))
-import Control.Exception (SomeException, try)
+import Control.Exception (SomeException, try, throwIO, ErrorCall(ErrorCall))
 import Control.Monad ((<=<))
 import Control.Monad.Except
 import Crypto.Number.Basic (numBytes)
@@ -272,9 +275,11 @@ verifySignature pks xid doc = runExceptT $ do
                xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
                xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
        in failWith SignatureCanonicalizationError
+          . capture' "applyCanonicalization"
           $ (applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
   rl :: NonEmpty.NonEmpty (Either String String)
     <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference si) <>))
+      . capture' "verifyReference"
       $ mapM (`verifyReference` signedSubtree) (signedInfoReference si)
 
   unless (all isRight rl) $
@@ -312,12 +317,18 @@ verifySignature pks xid doc = runExceptT $ do
 -- TODO: there may be a cleaner way to do this.  i know that xml-conduit isn't very interested
 -- in getting name spaces right, and HXT doesn't seem to be very successful at it either, but
 -- it may just be that i'm unaware of the regions of the HXT jungle that do this.
-fixNamespaces :: HXT.XmlTree -> IO HXT.XmlTree
+fixNamespaces :: HasCallStack => HXT.XmlTree -> IO HXT.XmlTree
 fixNamespaces doc = do
   can :: SBS
-    <- liftIO $ canonicalize (CanonicalXMLExcl10 False) Nothing Nothing doc
-  maybe (throwIO $ ErrorCall "canonicalized xml cannot be parsed back") pure $
+    <- liftIO . capture' "fixNamespaces" $
+       canonicalize (CanonicalXMLExcl10 False) Nothing Nothing doc
+  maybe (throwIO . ErrorCall $ "parse error on canonicalized xml") pure $
     xmlToDoc (cs can)
+
+capture' :: String -> IO a -> IO a
+capture' actionName action = hCapture [stdout, stderr] action >>= \case
+  ("", !out) -> pure out
+  (noise, _) -> throwIO . ErrorCall $ actionName <> ": " <> noise
 
 
 data SignatureError =
