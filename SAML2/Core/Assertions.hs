@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -445,7 +446,11 @@ instance XP.XmlPickler Action where
 
 -- |§2.7.4.3
 newtype Evidence = Evidence{ evidence :: [AssertionRef] }
-  deriving (Eq, Show, Monoid)
+  deriving (Eq, Show
+#if MIN_VERSION_base(4,11,0)
+    , Semigroup
+#endif
+    , Monoid)
 
 instance XP.XmlPickler Evidence where
   xpickle = [XP.biCase|

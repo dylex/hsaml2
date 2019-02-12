@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -149,7 +150,11 @@ instance DS.Signable Metadata where
 
 -- |§2.3.1 empty list means missing
 newtype Extensions = Extensions{ extensions :: Nodes }
-  deriving (Eq, Show, Monoid)
+  deriving (Eq, Show
+#if MIN_VERSION_base(4,11,0)
+    , Semigroup
+#endif
+    , Monoid)
 
 instance XP.XmlPickler Extensions where
   xpickle = XP.xpDefault (Extensions []) $

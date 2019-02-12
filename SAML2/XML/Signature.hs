@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ViewPatterns #-}
 -- |
 -- XML Signature Syntax and Processing
@@ -104,6 +105,11 @@ data PublicKeys = PublicKeys
   , publicKeyRSA :: Maybe RSA.PublicKey
   } deriving (Eq, Show)
 
+#if MIN_VERSION_base(4,11,0)
+instance Semigroup PublicKeys where
+  PublicKeys dsa1 rsa1 <> PublicKeys dsa2 rsa2 =
+    PublicKeys (dsa1 <|> dsa2) (rsa1 <|> rsa2)
+#endif
 instance Monoid PublicKeys where
   mempty = PublicKeys Nothing Nothing
   PublicKeys dsa1 rsa1 `mappend` PublicKeys dsa2 rsa2 =
