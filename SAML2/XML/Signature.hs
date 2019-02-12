@@ -261,16 +261,8 @@ _verifySignatureOld pks xid doc = do
 verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Either SignatureError ())
 verifySignature pks xid doc = runExceptT $ do
   signedSubtree :: HXT.XmlTree
-    <- do
-        mdoc' <- liftIO . try @SomeException $ fixNamespaces doc
-        doc' <- case mdoc' of
-          Right x
-            -> pure x
-          Left err
-            -> throwError . SignatureParseError $ "failed to canonicalize input: " <> show err
-        case HXT.runLA (getID xid) doc' of
-          [x] -> return x
-          _ -> throwError SignedElementNotFound
+    <- failWith SignatureParseError
+      $ getSubtreeWithNamespaces xid doc
 
   signatureElem@Signature{ signatureSignedInfo = signedInfoTyped } :: Signature
     <- do
@@ -343,11 +335,18 @@ verifySignature pks xid doc = runExceptT $ do
 -- TODO: there may be a cleaner way to do this.  i know that xml-conduit isn't very interested
 -- in getting name spaces right, and HXT doesn't seem to be very successful at it either, but
 -- it may just be that i'm unaware of the regions of the HXT jungle that do this.
-fixNamespaces :: HasCallStack => HXT.XmlTree -> IO HXT.XmlTree
-fixNamespaces doc = do
+getSubtreeWithNamespaces :: HasCallStack => String -> HXT.XmlTree -> IO HXT.XmlTree
+getSubtreeWithNamespaces xid doc = do
+  let xpath = "//*[@ID=" <> show xid <> "]"
   can :: SBS
     <- liftIO . capture' "fixNamespaces" $
-       canonicalize (CanonicalXMLExcl10 False) Nothing Nothing $ DOM.mkRoot [] [doc]
+       canonicalize (CanonicalXMLExcl10 True) Nothing (Just xpath) $ DOM.mkRoot [] [doc]
+
+  writeFile "/tmp/x-xpath" xpath
+  writeFile "/tmp/x-in" (cs $ docToXML' doc)
+  writeFile "/tmp/x-out" (cs can)
+  -- xpath tested successfully against https://codebeautify.org/Xpath-Tester
+
   maybe (throwIO . ErrorCall $ "parse error on canonicalized xml") pure $
     xmlToDoc (cs can)
 
