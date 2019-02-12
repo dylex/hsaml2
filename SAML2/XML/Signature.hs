@@ -328,7 +328,7 @@ fixNamespaces :: HasCallStack => HXT.XmlTree -> IO HXT.XmlTree
 fixNamespaces doc = do
   can :: SBS
     <- liftIO . capture' "fixNamespaces" $
-       canonicalize (CanonicalXMLExcl10 False) Nothing Nothing doc
+       canonicalize (CanonicalXMLExcl10 False) Nothing Nothing $ DOM.mkRoot [] [doc]
   maybe (throwIO . ErrorCall $ "parse error on canonicalized xml") pure $
     xmlToDoc (cs can)
 
