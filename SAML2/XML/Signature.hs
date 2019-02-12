@@ -284,17 +284,6 @@ verifySignature pks xid doc = runExceptT $ do
           Left err -> throwError . SignatureParseError $ show err
           Right v -> pure v
 
-  signedInfoElem :: BS.ByteString
-    <- let -- (if you need to understand what xpath does and why, make sure you leave a
-           -- comment here that explains what you've learned!)
-           xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
-             where
-               xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
-               xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
-       in failWith SignatureCanonicalizationError
-          . capture' "applyCanonicalization"
-          $ (applyCanonicalization (signedInfoCanonicalizationMethod signedInfoTyped) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
-
   -- validate the hashes
   referenceChecks :: NonEmpty.NonEmpty (Either String String)
     <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference signedInfoTyped) <>))
@@ -307,6 +296,17 @@ verifySignature pks xid doc = runExceptT $ do
   -- the subtree we are interested in is among the signed subtrees
   unless (elem (Right xid) referenceChecks) $
     throwError . SignatureVerifyInputNotReferenced $ show referenceChecks
+
+  signedInfoElem :: BS.ByteString
+    <- let -- (if you need to understand what xpath does and why, make sure you leave a
+           -- comment here that explains what you've learned!)
+           xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
+             where
+               xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
+               xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
+       in failWith SignatureCanonicalizationError
+          . capture' "applyCanonicalization"
+          $ (applyCanonicalization (signedInfoCanonicalizationMethod signedInfoTyped) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
 
   do
     let keys :: PublicKeys
@@ -337,7 +337,7 @@ verifySignature pks xid doc = runExceptT $ do
 
 -- | if name spaces that are declared in doc and used in the signed subtree, we need to copy
 -- the declarations into the part the subtree to make it self-contained.  the easiest way to
--- impleemnt that is to use a xml:dsig canonicalization function and do another few rounds of
+-- implement that is to use a xml:dsig canonicalization function and do another round of
 -- rendering and parsing.
 --
 -- TODO: there may be a cleaner way to do this.  i know that xml-conduit isn't very interested
@@ -351,10 +351,11 @@ fixNamespaces doc = do
   maybe (throwIO . ErrorCall $ "parse error on canonicalized xml") pure $
     xmlToDoc (cs can)
 
+-- | Capture stdout, stderr to a temp file, and throw an IO error if that file is non-empty.
 capture' :: String -> IO a -> IO a
 capture' actionName action = hCapture [stdout, stderr] action >>= \case
   ("", !out) -> pure out
-  (noise, _) -> throwIO . ErrorCall $ actionName <> ": " <> noise
+  (noise@(_:_), _) -> throwIO . ErrorCall $ actionName <> ": " <> noise
 
 
 data SignatureError =
@@ -371,4 +372,4 @@ data SignatureError =
 
 failWith :: forall m a. (MonadIO m, MonadError SignatureError m)
          => (String -> SignatureError) -> IO a -> m a
-failWith mkerr action = either (throwError . mkerr . show @SomeException) pure =<< liftIO (try action)
+failWith mkerr action = either (throwError . mkerr . show) pure =<< liftIO (try @SomeException action)
