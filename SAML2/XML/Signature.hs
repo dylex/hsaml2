@@ -42,6 +42,7 @@ import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Either (isRight, lefts)
+import Data.List (intercalate)
 import Data.Semigroup (Semigroup(..))
 import Data.String.Conversions hiding ((<>))
 import Data.Monoid (Monoid(..))
@@ -290,12 +291,10 @@ verifySignature pks xid doc = runExceptT $ do
     throwError . SignatureVerifyInputNotReferenced $ show referenceChecks
 
   signedInfoElem :: BS.ByteString
-    <- let -- (if you need to understand what xpath does and why, make sure you leave a
-           -- comment here that explains what you've learned!)
-           xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
+    <- let xpath = mkXPath xpathbase
              where
                xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
-               xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
+               xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo"
        in failWith SignatureCanonicalizationError
           . capture' "applyCanonicalization"
           $ (applyCanonicalization (signedInfoCanonicalizationMethod signedInfoTyped) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
@@ -337,7 +336,7 @@ verifySignature pks xid doc = runExceptT $ do
 -- it may just be that i'm unaware of the regions of the HXT jungle that do this.
 getSubtreeWithNamespaces :: HasCallStack => String -> HXT.XmlTree -> IO HXT.XmlTree
 getSubtreeWithNamespaces xid doc = do
-  let xpath = "//*[@ID=" <> show xid <> "]"
+  let xpath = mkXPath $ "//*[@ID=" <> show xid <> "]"
   can :: SBS
     <- liftIO . capture' "fixNamespaces" $
        canonicalize (CanonicalXMLExcl10 True) Nothing (Just xpath) $ DOM.mkRoot [] [doc]
@@ -355,6 +354,14 @@ capture' :: String -> IO a -> IO a
 capture' actionName action = hCapture [stdout, stderr] action >>= \case
   ("", !out) -> pure out
   (noise@(_:_), _) -> throwIO . ErrorCall $ actionName <> ": " <> noise
+
+-- | Takes an xpath that works on https://codebeautify.org/Xpath-Tester, but only returns the
+-- empty tag stripped of all attributes and children here, and returns an xpath that does what
+-- you'd expect.
+--
+-- Anybody: if you know more about the why, please elaborate.
+mkXPath :: String -> String
+mkXPath xpathbase = intercalate " | " ((xpathbase <>) <$> ["//.", "//@*", "//namespace::*"])
 
 
 data SignatureError =
