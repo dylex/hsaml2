@@ -99,7 +99,9 @@ generateReference r x = do
   return r
     { referenceDigestValue = d }
 
-verifyReference :: Reference -> HXT.XmlTree -> IO (Either String String)
+-- | Compute digest of a 'Reference' into an xml document.  If digest matches the one expected
+-- by the 'Reference', return the xml ID; otherwise, return an error string.
+verifyReference :: HasCallStack => Reference -> HXT.XmlTree -> IO (Either String String)
 verifyReference r doc = case referenceURI r of
   Just URI{ uriScheme = "", uriAuthority = Nothing, uriPath = "", uriQuery = "", uriFragment = '#':xid } ->
     case HXT.runLA (getID xid) doc of
@@ -269,7 +271,7 @@ verifySignature pks xid doc = runExceptT $ do
           Left err -> throwError . SignatureParseError $ show err
           Right v -> pure v
 
-  six :: BS.ByteString {- SignedInfo element -}
+  signedInfoElem :: BS.ByteString
     <- let xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
              where
                xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
@@ -277,18 +279,20 @@ verifySignature pks xid doc = runExceptT $ do
        in failWith SignatureCanonicalizationError
           . capture' "applyCanonicalization"
           $ (applyCanonicalization (signedInfoCanonicalizationMethod si) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
-  rl :: NonEmpty.NonEmpty (Either String String)
+
+  referenceChecks :: NonEmpty.NonEmpty (Either String String)
     <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference si) <>))
       . capture' "verifyReference"
       $ mapM (`verifyReference` signedSubtree) (signedInfoReference si)
 
-  unless (all isRight rl) $
-    throwError . SignatureVerifyBadReferences $ show (signedInfoReference si, rl)
-  unless (elem (Right xid) rl) $
-    throwError . SignatureVerifyInputNotReferenced $ show rl
+  unless (all isRight referenceChecks) $
+    throwError . SignatureVerifyBadReferences $ show (signedInfoReference si, referenceChecks)
+  unless (elem (Right xid) referenceChecks) $
+    throwError . SignatureVerifyInputNotReferenced $ show referenceChecks
 
   do
-    let keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo signatureElem)
+    let keys :: PublicKeys
+        keys = pks <> foldMap (foldMap keyinfo . keyInfoElements) (signatureKeyInfo signatureElem)
           where
             keyinfo (KeyInfoKeyValue kv) = publicKeyValues kv
             keyinfo (X509Data l) = foldMap keyx509d l
@@ -300,12 +304,15 @@ verifySignature pks xid doc = runExceptT $ do
                 keyx509p _ = mempty
             keyinfo _ = mempty
 
-        alg :: IdentifiedURI SignatureAlgorithm = signatureMethodAlgorithm $ signedInfoSignatureMethod si
-        dig :: Base64Binary = signatureValue $ signatureSignatureValue signatureElem
+        alg :: IdentifiedURI SignatureAlgorithm
+        alg = signatureMethodAlgorithm $ signedInfoSignatureMethod si
 
-    case verifyBytes keys alg dig six of
-      Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig, six)
-      Just False -> throwError . SignatureVerificationCryptoFailed      $ show (keys, alg, dig, six)
+        dig :: Base64Binary
+        dig = signatureValue $ signatureSignatureValue signatureElem
+
+    case verifyBytes keys alg dig signedInfoElem of
+      Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig, signedInfoElem)
+      Just False -> throwError . SignatureVerificationCryptoFailed      $ show (keys, alg, dig, signedInfoElem)
       Just True  -> pure ()
 
 

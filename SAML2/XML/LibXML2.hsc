@@ -84,7 +84,7 @@ fromXmlTrees = fromBytes . BSL.toStrict . HXTS.xshow' cq aq unicodeCharToUtf8'
   aq c = cq c
 
 withXMLXPathNodeList :: Ptr XMLDoc -> String -> (Ptr XMLNodeSet -> IO a) -> IO a
-withXMLXPathNodeList d s f = 
+withXMLXPathNodeList d s f =
   bracket (xmlXPathNewContext d) xmlXPathFreeContext $ \c ->
   withCString s $ \p ->
   bracket
