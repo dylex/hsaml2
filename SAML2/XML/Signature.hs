@@ -340,12 +340,6 @@ getSubtreeWithNamespaces xid doc = do
   can :: SBS
     <- liftIO . capture' "fixNamespaces" $
        canonicalize (CanonicalXMLExcl10 True) Nothing (Just xpath) $ DOM.mkRoot [] [doc]
-
-  writeFile "/tmp/x-xpath" xpath
-  writeFile "/tmp/x-in" (cs $ docToXML' doc)
-  writeFile "/tmp/x-out" (cs can)
-  -- xpath tested successfully against https://codebeautify.org/Xpath-Tester
-
   maybe (throwIO . ErrorCall $ "parse error on canonicalized xml") pure $
     xmlToDoc (cs can)
 
