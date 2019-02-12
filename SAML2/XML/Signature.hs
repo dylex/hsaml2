@@ -262,11 +262,11 @@ verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Either SignatureEr
 verifySignature pks xid doc = runExceptT $ do
   signedSubtree :: HXT.XmlTree
     <- do
-        mdoc' <- liftIO . try $ fixNamespaces doc
+        mdoc' <- liftIO . try @SomeException $ fixNamespaces doc
         doc' <- case mdoc' of
           Right x
             -> pure x
-          Left (err :: SomeException)
+          Left err
             -> throwError . SignatureParseError $ "failed to canonicalize input: " <> show err
         case HXT.runLA (getID xid) doc' of
           [x] -> return x
@@ -285,7 +285,9 @@ verifySignature pks xid doc = runExceptT $ do
           Right v -> pure v
 
   signedInfoElem :: BS.ByteString
-    <- let xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
+    <- let -- (if you need to understand what xpath does and why, make sure you leave a
+           -- comment here that explains what you've learned!)
+           xpath = xpathbase ++ ". | " ++ xpathbase ++ "@* | " ++ xpathbase ++ "namespace::*"
              where
                xpathsel t = "/*[local-name()='" ++ t ++ "' and namespace-uri()='" ++ namespaceURIString ns ++ "']"
                xpathbase = "/*" ++ xpathsel "Signature" ++ xpathsel "SignedInfo" ++ "//"
@@ -293,13 +295,16 @@ verifySignature pks xid doc = runExceptT $ do
           . capture' "applyCanonicalization"
           $ (applyCanonicalization (signedInfoCanonicalizationMethod signedInfoTyped) (Just xpath) $ DOM.mkRoot [] [signedSubtree])
 
+  -- validate the hashes
   referenceChecks :: NonEmpty.NonEmpty (Either String String)
     <- failWith (SignatureVerifyReferenceError . (show (signedInfoReference signedInfoTyped) <>))
       . capture' "verifyReference"
       $ mapM (`verifyReference` signedSubtree) (signedInfoReference signedInfoTyped)
 
+  -- all signed subtrees have valid hashes
   unless (all isRight referenceChecks) $
     throwError . SignatureVerifyBadReferences $ show (signedInfoReference signedInfoTyped, referenceChecks)
+  -- the subtree we are interested in is among the signed subtrees
   unless (elem (Right xid) referenceChecks) $
     throwError . SignatureVerifyInputNotReferenced $ show referenceChecks
 
@@ -323,6 +328,7 @@ verifySignature pks xid doc = runExceptT $ do
         dig :: Base64Binary
         dig = signatureValue $ signatureSignatureValue signatureElem
 
+    -- validate the signature
     case verifyBytes keys alg dig signedInfoElem of
       Nothing    -> throwError . SignatureVerificationCryptoUnsupported $ show (keys, alg, dig, signedInfoElem)
       Just False -> throwError . SignatureVerificationCryptoFailed      $ show (keys, alg, dig, signedInfoElem)
