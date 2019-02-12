@@ -41,7 +41,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List.NonEmpty as NonEmpty
-import Data.Either (isRight)
+import Data.Either (isRight, lefts)
 import Data.Semigroup (Semigroup(..))
 import Data.String.Conversions hiding ((<>))
 import Data.Monoid (Monoid(..))
@@ -112,7 +112,7 @@ verifyReference r doc = case referenceURI r of
             want = referenceDigestValue r
         return $ if have == want
           then Right xid
-          else Left "digest mismatch"
+          else Left ("digest mismatch for #" <> xid)
       bad -> return . Left $ "reference has " <> show (length bad) <> " matches, should have 1."
   bad -> return . Left $ "bad referenceURI: " <> show bad
 
@@ -303,7 +303,7 @@ verifySignature pks xid doc = runExceptT $ do
 
   -- all signed subtrees have valid hashes
   unless (all isRight referenceChecks) $
-    throwError . SignatureVerifyBadReferences $ show (signedInfoReference signedInfoTyped, referenceChecks)
+    throwError . SignatureVerifyBadReferences $ (show . lefts . NonEmpty.toList $ referenceChecks)
   -- the subtree we are interested in is among the signed subtrees
   unless (elem (Right xid) referenceChecks) $
     throwError . SignatureVerifyInputNotReferenced $ show referenceChecks
