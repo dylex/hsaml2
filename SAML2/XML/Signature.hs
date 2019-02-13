@@ -250,7 +250,7 @@ _verifySignatureOld pks xid doc = do
 --
 -- how does this work?:
 --   * dig for the subtree of the input with an ID attribute containing xid (the "signed subtree")
---   * parse the 'Sigature' subtree in that subtree (we only do envelopped signatures)
+--   * parse the 'Signature' subtree in that subtree (we only do envelopped signatures)
 --   * get the canonicalized 'SignedInfo' subtree of the signed subtree as bytestring.
 --   * call 'verifyReference' on all 'Reference's contained in the parsed signature to make sure input is intact.
 --   * call 'verifyBytes' on the canonicalized 'SignedInfo' to make sure the signature is valid.
