@@ -17,11 +17,10 @@ module SAML2.XML
   , xpIdentified
   , xpIdentifier
   , IdentifiedURI
-  , samlToDoc
+  , samlToDoc, samlToDoc'
   , samlToXML
   , docToSAML
-  , docToXML
-  , docToXML'
+  , docToXML, docToXML'
   , xmlToSAML
   , xmlToDoc
   , xmlToDocE
@@ -33,6 +32,7 @@ import qualified Data.ByteString.Lazy.Char8 as BSLC
 import Data.Default (Default(..))
 import qualified Data.Invertible as Inv
 import Data.Maybe (listToMaybe)
+import Data.Tree.Class (getChildren)
 import Network.URI (URI)
 import qualified Text.XML.HXT.Core as HXT
 import qualified Data.Tree.NTree.TypeDefs as HXT
@@ -101,6 +101,14 @@ samlToDoc = head
   . HXT.runLA (HXT.processChildren $ HXT.cleanupNamespaces HXT.collectPrefixUriPairs)
   . XP.pickleDoc XP.xpickle
 
+-- | 'samlToDoc' adds bogus `</>` elements around the output tree, this variant doesn't.
+--
+-- TODO: change this function to return 'HXT.XmlTrees' and replace 'samlToDoc' with it.
+samlToDoc' :: XP.XmlPickler a => a -> HXT.XmlTree
+samlToDoc' = head . getChildren . head
+  . HXT.runLA (HXT.processChildren $ HXT.cleanupNamespaces HXT.collectPrefixUriPairs)
+  . XP.pickleDoc XP.xpickle
+
 -- | see 'docToXML''
 docToXML :: HXT.XmlTree -> BSL.ByteString
 docToXML = BSL.concat . HXT.runLA (HXT.xshowBlob HXT.getChildren)
@@ -108,6 +116,9 @@ docToXML = BSL.concat . HXT.runLA (HXT.xshowBlob HXT.getChildren)
 -- | 'docToXML' chops off the root element from the tree.  'docToXML'' does not do this.  it may
 -- make sense to remove 'docToXML', but since i don't understand this code enough to be confident
 -- not to break anything, i'll just leave this extra function for reference.
+--
+-- TODO: replace docToXML with this.  write test cases for every replacement to make sure it's
+-- what we want.
 docToXML' :: HXT.XmlTree -> BSL.ByteString
 docToXML' = Text.XML.HXT.DOM.ShowXml.xshowBlob . (:[])
 

@@ -7,6 +7,7 @@ module XML.Signature (tests) where
 import Control.Exception (SomeException, try)
 import Control.Monad
 import Data.Either (isLeft)
+import Data.List (isInfixOf)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.Time
 import System.IO.Unsafe (unsafePerformIO)
@@ -192,16 +193,19 @@ signVerifyTests = U.test
   , U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkey1 req
-      let reqdoc = samlToDoc req'
+      let reqdoc = samlToDoc' req'
       req'' :: AuthnRequest <- verifySAMLProtocol' pubkey1 reqdoc
       U.assertEqual "AuthnRequest with verifySAMLProtocol' (matching pubkeys)" req' req''
 
   , U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkey1 req
-      let reqdoc = samlToDoc req'
+      let reqdoc = samlToDoc' req'
       req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' pubkey2 reqdoc
-      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys)" $ isLeft req''
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): isLeft"
+        $ isLeft req''
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): error message matches"
+        $ "SignatureVerificationCryptoFailed" `isInfixOf` show req''
   ]
 
 {-# NOINLINE keypair1 #-}
