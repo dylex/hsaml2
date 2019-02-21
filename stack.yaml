@@ -1,4 +1,4 @@
-resolver: lts-13.7
+resolver: lts-13.8
 extra-deps:
 - invertible-hxt-0.1
 packages:
