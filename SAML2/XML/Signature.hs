@@ -36,6 +36,7 @@ import Network.URI (URI(..))
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.DOM.ShowXml as DOM
 import qualified Text.XML.HXT.DOM.XmlNode as DOM
+import qualified Text.XML.HXT.DOM.QualifiedName as DOM
 
 import SAML2.XML
 import SAML2.XML.Canonical
@@ -190,7 +191,8 @@ generateSignature sk si = do
 -- Just True:        everything is ok!
 verifySignature :: PublicKeys -> String -> HXT.XmlTree -> IO (Maybe Bool)
 verifySignature pks xid doc = do
-  x <- case HXT.runLA (getID xid) doc of
+  let namespaces = DOM.toNsEnv $ HXT.runLA HXT.collectNamespaceDecl doc
+  x <- case HXT.runLA (getID xid HXT.>>> HXT.attachNsEnv namespaces) doc of
     [x] -> return x
     _ -> fail "verifySignature: element not found"
   sx <- case child "Signature" x of
