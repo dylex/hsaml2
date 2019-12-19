@@ -163,6 +163,8 @@ verifyBytes PublicKeys{ publicKeyDSA = Just k } (Identified SignatureDSA_SHA1) s
   where (r, s) = BS.splitAt 20 sig
 verifyBytes PublicKeys{ publicKeyRSA = Just k } (Identified SignatureRSA_SHA1) sig m = Just $
   RSA.verify (Just SHA1) k m sig
+verifyBytes PublicKeys{ publicKeyRSA = Just k } (Identified SignatureRSA_SHA256) sig m = Just $
+  RSA.verify (Just SHA256) k m sig
 verifyBytes _ _ _ _ = Nothing
 
 signBase64 :: SigningKey -> BS.ByteString -> IO BS.ByteString
