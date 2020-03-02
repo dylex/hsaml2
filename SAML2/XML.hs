@@ -26,7 +26,7 @@ module SAML2.XML
   ) where
 
 import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Lazy.Char8 as BSLC
+import qualified Data.ByteString.Lazy.UTF8 as BSLU
 import Data.Default (Default(..))
 import qualified Data.Invertible as Inv
 import Data.Maybe (listToMaybe)
@@ -112,7 +112,7 @@ xmlToDoc = listToMaybe . HXT.runLA
   HXT.>>> HXT.removeWhiteSpace
   HXT.>>> HXT.neg HXT.isXmlPi
   HXT.>>> HXT.propagateNamespaces)
-  . BSLC.unpack -- XXX encoding?
+  . BSLU.toString
 
 docToSAML :: XP.XmlPickler a => HXT.XmlTree -> Either String a
 docToSAML = XP.unpickleDoc' XP.xpickle
