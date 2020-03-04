@@ -3,12 +3,19 @@
 module XML.Signature (tests) where
 
 import Control.Exception (SomeException, try)
+import Data.ByteString.Base64
 import Data.Either (isLeft)
 import qualified Crypto.PubKey.DSA as DSA
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.String.Conversions
 import Data.Time
 import qualified Data.X509 as X509
+import GHC.Stack
 import System.IO.Unsafe (unsafePerformIO)
+
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
+import qualified SAML2.XML as HS
 import qualified Test.HUnit as U
 import qualified Text.XML.HXT.DOM.QualifiedName as HXT
 import qualified Text.XML.HXT.DOM.XmlNode as HXT
@@ -21,10 +28,12 @@ import SAML2.XML
 import SAML2.XML.Canonical
 import SAML2.XML.Signature
 
+import Data.Tree.NTree.TypeDefs
+import Text.XML.HXT.DOM.TypeDefs
 import XML
 
 tests :: U.Test
-tests = U.test [serializationTests, signVerifyTests]
+tests = U.test [serializationTests, signVerifyTests, counterExamples]
 
 
 ----------------------------------------------------------------------
@@ -253,3 +262,32 @@ someprottype = ProtocolType
 
 someTime :: UTCTime
 Just someTime = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" "2013-03-18T03:28:54.1Z"
+
+----------------------------------------------------------------------
+-- more counter-examples
+
+counterExamples :: U.Test
+counterExamples = U.test
+  [ U.TestCase $ do
+      (i, o) <- canonicalizeCounterExample "PGE+w6Q8L2E+"
+      U.assertEqual "canoncalization broke the input" i o
+  ]
+
+canonicalizeCounterExample :: HasCallStack => BS.ByteString -> IO (LBS, LBS)
+canonicalizeCounterExample base64input = do
+  let inbs :: LBS.ByteString
+      inbs = either (error "badcase") cs $ Data.ByteString.Base64.decode base64input
+
+      tree :: XmlTree
+      tree = maybe (error "badcase") id $ HS.xmlToDoc inbs
+
+      algo :: CanonicalizationAlgorithm
+      algo = CanonicalXMLExcl10 {canonicalWithComments = True}
+
+  outbs :: LBS.ByteString <- cs <$> canonicalize algo Nothing Nothing (NTree (XTag (mkQName "" "" "root") []) [tree])
+
+  -- LBS.putStr ("[" <> inbs <> "]\n")
+  -- LBS.putStr ("[" <> outbs <> "]\n")
+  -- print $ inbs == outbs
+
+  pure (inbs, outbs)
