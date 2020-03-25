@@ -50,12 +50,12 @@ getID :: HXT.ArrowXml a => String -> a HXT.XmlTree HXT.XmlTree
 getID = HXT.deep . HXT.hasAttrValue "ID" . (==)
 
 applyCanonicalization :: CanonicalizationMethod -> Maybe String -> HXT.XmlTree -> IO BS.ByteString
-applyCanonicalization (CanonicalizationMethod (Identified a) ins []) = canonicalize a ins
-applyCanonicalization m = fail $ "applyCanonicalization: unsupported " ++ show m
+applyCanonicalization (CanonicalizationMethod (Identified a) ins []) x y = canonicalize a ins x y
+applyCanonicalization m _ _ = fail $ "applyCanonicalization: unsupported " ++ show m
 
 applyTransformsBytes :: [Transform] -> BSL.ByteString -> IO BSL.ByteString
-applyTransformsBytes [] = return
-applyTransformsBytes (t : _) = fail ("applyTransforms: unsupported Signature " ++ show t)
+applyTransformsBytes [] v = return v
+applyTransformsBytes (t : _) _ = fail ("applyTransforms: unsupported Signature " ++ show t)
 
 applyTransformsXML :: [Transform] -> HXT.XmlTree -> IO BSL.ByteString
 applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x : tl) =

@@ -78,12 +78,15 @@ xpDateTime :: XP.PU DateTime
 xpDateTime = XP.PU
   { XP.theSchema = XPS.scDTxsd XSD.xsd_dateTime []
   , XP.appPickle = XP.putCont . XN.mkText . tweakTimeString . formatTime defaultTimeLocale fmtz
-  , XP.appUnPickle = XP.getCont >>= XP.liftMaybe "dateTime expects text" . XN.getText >>= parseTimeM True defaultTimeLocale fmtz
+  , XP.appUnPickle = XP.getCont >>= XP.liftMaybe "dateTime expects text" . XN.getText >>= parseTime
   }
   where
   -- timezone must be 'Z', and MicrosoftS(tm) Azure(tm) will choke when it is ommitted.  (error
   -- messages are utterly unhelpful.)
   fmtz = "%Y-%m-%dT%H:%M:%S%QZ"
+
+  parseTime dateString = maybe (XP.throwMsg $ "can't parse date " <> dateString) pure
+    $ parseTimeM True defaultTimeLocale fmtz dateString
 
   -- adding '%Q' may be longer than 7 digits, which makes MicrosoftS(tm) Azure(tm) choke.
   tweakTimeString :: String -> String
