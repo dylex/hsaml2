@@ -13,8 +13,19 @@ cabal-version:       >=1.10
 tested-with:         GHC == 8.0.2 || == 8.2.2 || == 8.4.4 || == 8.6.5 || == 8.8.3
 
 extra-source-files:
-  test/XML/signature-example.xml
+  test/Metadata/metadata-idp.xml
+  test/Metadata/metadata-nyu.xml
+  test/Metadata/metadata-osf.xml
+  test/Metadata/metadata-sp.xml
   test/XML/encryption-example.xml
+  test/XML/noncanonical1.xml
+  test/XML/noncanonical2.xml
+  test/XML/noncanonical3.xml
+  test/XML/noncanonical4.xml
+  test/XML/noncanonical5.xml
+  test/XML/noncanonical6.xml
+  test/XML/signature-example.xml
+  test/XML/world.txt
 
 source-repository head
   type: git
