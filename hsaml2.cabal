@@ -104,6 +104,7 @@ test-suite tests
     Metadata.Metadata
     XML
     XML.Canonical
+    XML.Keys
     XML.Encryption
     XML.Signature
   default-language: Haskell2010
@@ -116,6 +117,7 @@ test-suite tests
     hsaml2,
     hxt,
     hxt-http,
+    http-types,
     network-uri,
     semigroups,
     string-conversions,
