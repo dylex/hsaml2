@@ -172,7 +172,7 @@ signBase64 :: SigningKey -> BS.ByteString -> IO BS.ByteString
 signBase64 sk = fmap Base64.encode . signBytes sk
 
 verifyBase64 :: PublicKeys -> IdentifiedURI SignatureAlgorithm -> BS.ByteString -> BS.ByteString -> Maybe Bool
-verifyBase64 pk alg m = either (const $ Just False) (verifyBytes pk alg m) . Base64.decode where
+verifyBase64 pk alg sig m = either (const $ Just False) (\s -> verifyBytes pk alg s m) $ Base64.decode sig
 
 generateSignature :: SigningKey -> SignedInfo -> IO Signature
 generateSignature sk si = do

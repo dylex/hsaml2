@@ -98,8 +98,8 @@ decodeURI pk ru = do
   case ql paramSignatureAlgorithm of
     Just (sav, sas) -> do
       sigres $ DS.verifyBase64 pk (reidentify $ puri sav)
-        (snd pq <> foldMap (BSC.cons '&' . snd) rsq <> BSC.cons '&' sas)
         (foldMap fst $ ql paramSignature)
+        (snd pq <> foldMap (BSC.cons '&' . snd) rsq <> BSC.cons '&' sas)
       unless (SAMLP.protocolDestination (p ^. SAMLP.samlProtocol') == Just ru{ uriQuery = "" }) $
         fail "Destination incorrect"
     Nothing -> return ()
