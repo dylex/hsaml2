@@ -1,0 +1,26 @@
+name: CI
+on:
+  - push
+  - pull_request
+jobs:
+  haskell:
+    name: stack build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-haskell@v1
+        with:
+          ghc-version: '8.10.4'
+          enable-stack: true
+      - uses: actions/cache@v1
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-stack-${{ hashFiles('hsaml2.cabal') }}-${{ hashFiles('stack.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-
+            ${{ runner.os }}-
+      - name: build
+        run: stack build --system-ghc
+      - name: test
+        run: stack test --system-ghc
+ 
