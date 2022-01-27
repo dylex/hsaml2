@@ -1,4 +1,4 @@
-module XML.Keys (privkey1, pubkey1, pubkey2, privkeyRsa) where
+module XML.Keys (privkey1, pubkey1, pubkey2, privkeyRsa, dummyPubkeyRSA) where
 
 import SAML2.XML.Signature
 import qualified Crypto.PubKey.RSA as RSA
@@ -34,6 +34,10 @@ mkkeypair = do
 privkeyRsa :: SigningKey
 _pubkeyRsa :: PublicKeys
 (privkeyRsa, _pubkeyRsa) = unsafePerformIO mkRsaKeypair
+
+_dummyPrivkeyRSA :: SigningKey
+dummyPubkeyRSA :: PublicKeys
+(_dummyPrivkeyRSA, dummyPubkeyRSA) = unsafePerformIO mkRsaKeypair
 
 mkRsaKeypair :: IO (SigningKey, PublicKeys)
 mkRsaKeypair = do

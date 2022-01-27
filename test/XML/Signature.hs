@@ -211,6 +211,16 @@ signVerifyTests = U.test
 
   , U.TestCase $ do
       let req = somereq
+      req' <- signSAMLProtocol privkeyRsa req
+      let reqdoc = samlToDoc req'
+      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' (pubkey1 <> dummyPubkeyRSA) reqdoc
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): isLeft"
+        $ isLeft req''
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): error message matches"
+        $ "Left user error (signature verification failed: verification failed.)" `isInfixOf` show req''
+
+  , U.TestCase $ do
+      let req = somereq
       req' <- signSAMLProtocol privkey1 req
       let reqdoc = samlToDoc req'
       req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' pubkey2 reqdoc
