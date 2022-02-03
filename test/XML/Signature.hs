@@ -5,6 +5,7 @@ module XML.Signature (tests) where
 import Control.Exception (SomeException, try)
 import Data.ByteString.Base64
 import Data.Either (isLeft)
+import Data.List (isInfixOf)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.String.Conversions
 import Data.Time
@@ -187,16 +188,29 @@ signVerifyTests = U.test
   [ U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkey1 req
-      let reqlbs = samlToXML req'
-      req'' :: AuthnRequest <- verifySAMLProtocol reqlbs
-      U.assertEqual "AuthnRequest with verifySAMLProtocol (no pubkeys)" req' req''
-
-  , U.TestCase $ do
-      let req = somereq
-      req' <- signSAMLProtocol privkey1 req
       let reqdoc = samlToDoc req'
       req'' :: AuthnRequest <- verifySAMLProtocol' pubkey1 reqdoc
       U.assertEqual "AuthnRequest with verifySAMLProtocol' (matching pubkeys)" req' req''
+
+  , U.TestCase $ do
+      let req = somereq
+      req' <- signSAMLProtocol privkeyRsa req
+      let reqdoc = samlToDoc req'
+      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' pubkey1 reqdoc
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): isLeft"
+        $ isLeft req''
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): error message matches"
+        $ "Left user error (signature verification failed: no matching key/alg pair.)" `isInfixOf` show req''
+
+  , U.TestCase $ do
+      let req = somereq
+      req' <- signSAMLProtocol privkeyRsa req
+      let reqdoc = samlToDoc req'
+      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' (pubkey1 <> dummyPubkeyRSA) reqdoc
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): isLeft"
+        $ isLeft req''
+      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): error message matches"
+        $ "Left user error (signature verification failed: verification failed.)" `isInfixOf` show req''
 
   , U.TestCase $ do
       let req = somereq

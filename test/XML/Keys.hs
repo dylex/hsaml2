@@ -1,6 +1,8 @@
-module XML.Keys (privkey1, pubkey1, pubkey2) where
+module XML.Keys (privkey1, pubkey1, pubkey2, privkeyRsa, dummyPubkeyRSA) where
 
 import SAML2.XML.Signature
+import qualified Crypto.PubKey.RSA as RSA
+import qualified Crypto.PubKey.RSA.Types as RSA
 import qualified Crypto.PubKey.DSA as DSA
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -29,3 +31,17 @@ mkkeypair = do
       , DSA.params_g = 5421644057436475141609648488325705128047428394380474376834667300766108262613900542681289080713724597310673074119355136085795982097390670890367185141189796
       }
 
+privkeyRsa :: SigningKey
+_pubkeyRsa :: PublicKeys
+(privkeyRsa, _pubkeyRsa) = unsafePerformIO mkRsaKeypair
+
+_dummyPrivkeyRSA :: SigningKey
+dummyPubkeyRSA :: PublicKeys
+(_dummyPrivkeyRSA, dummyPubkeyRSA) = unsafePerformIO mkRsaKeypair
+
+mkRsaKeypair :: IO (SigningKey, PublicKeys)
+mkRsaKeypair = do
+  let rsaexp = 17
+      size = 96
+  (pubkey, privkey) <- RSA.generate size rsaexp
+  pure (SigningKeyRSA (RSA.KeyPair privkey), PublicKeys Nothing (Just pubkey))
