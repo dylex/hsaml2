@@ -188,13 +188,6 @@ signVerifyTests = U.test
   [ U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkey1 req
-      let reqlbs = samlToXML req'
-      req'' :: AuthnRequest <- verifySAMLProtocol reqlbs
-      U.assertEqual "AuthnRequest with verifySAMLProtocol (no pubkeys)" req' req''
-
-  , U.TestCase $ do
-      let req = somereq
-      req' <- signSAMLProtocol privkey1 req
       let reqdoc = samlToDoc req'
       req'' :: AuthnRequest <- verifySAMLProtocol' pubkey1 reqdoc
       U.assertEqual "AuthnRequest with verifySAMLProtocol' (matching pubkeys)" req' req''
