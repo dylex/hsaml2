@@ -1,5 +1,6 @@
 module XML
   ( testXML
+  , parseXML
   , uri
   , pickleElem
   ) where
