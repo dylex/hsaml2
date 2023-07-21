@@ -15,6 +15,7 @@ import Data.Foldable (fold)
 import qualified Network.URI as URI
 import qualified Text.XML.HXT.Arrow.Pickle.Schema as XPS
 
+import qualified Text.XML.HXT.DOM.QualifiedName as HXT
 import SAML2.Lens
 import SAML2.XML
 import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
@@ -197,6 +198,11 @@ data Descriptor
   = Descriptor
     { descriptorRole :: !RoleDescriptor
     } -- ^§2.4.1
+  | ExtendedRoleDescriptor
+    { descriptorRoleExtensionType :: !(XS.String)
+    , descriptorRole :: !RoleDescriptor
+    , descriptorAdditionalNodes :: !Nodes
+    } -- ^§2.4.1 (variant extended with use of xsi:type attribute)
   | IDPSSODescriptor
     { descriptorRole :: !RoleDescriptor
     , descriptorSSO :: !SSODescriptor
@@ -237,15 +243,23 @@ data Descriptor
     } -- ^§2.4.6
   deriving (Eq, Show)
 
+xsiTypeQName :: HXT.QName
+xsiTypeQName = HXT.mkQName "xsi" "type" "http://www.w3.org/2001/XMLSchema-instance"
+
 instance XP.XmlPickler Descriptor where
   xpickle = [XP.biCase|
-      Left (Left (Left (Left (Left r)))) <-> Descriptor r
+      Left (Left (Left (Left (Left (Left ((t, rde), an)))))) <-> ExtendedRoleDescriptor t rde an
+      Left (Left (Left (Left (Left (Right r))))) <-> Descriptor r
       Left (Left (Left (Left (Right (((((((ws, r), s), sso), nim), air), ap), a))))) <-> IDPSSODescriptor r s ws sso nim air ap a
       Left (Left (Left (Right (((((a, w), r), s), e), t)))) <-> SPSSODescriptor r s a w e t
       Left (Left (Right (((r, a), s), n))) <-> AuthnAuthorityDescriptor r a s n
       Left (Right (((((r, a), s), n), tp), t)) <-> AttributeAuthorityDescriptor r a s n tp t
       Right (((r, a), s), n) <-> PDPDescriptor r a s n|]
-    XP.>$< (xpElem "RoleDescriptor" XP.xpickle
+    XP.>$< (xpElem "RoleDescriptor" 
+        (XP.xpAttrQN xsiTypeQName XS.xpString
+          XP.>*< XP.xpickle 
+          XP.>*< XP.xpTrees)
+    XP.>|<  xpElem "RoleDescriptor" XP.xpickle
     XP.>|<  xpElem "IDPSSODescriptor"
             (XP.xpDefault False (XP.xpAttr "WantAuthnRequestsSigned" XS.xpBoolean)
       XP.>*< XP.xpickle

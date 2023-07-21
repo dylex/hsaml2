@@ -1,6 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Metadata.Metadata (tests) where
 
+import Control.Monad.IO.Class 
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.X509 as X509
 import qualified Test.HUnit as U
@@ -490,4 +492,12 @@ tests = U.test
         []
       ]
       []
+  , canLoadMetadata "test/Metadata/metadata-idp-azure.xml"
   ]
+    where
+      canLoadMetadata :: String -> U.Test
+      canLoadMetadata metadataPath = U.TestCase $ do
+        [res] <- liftIO $ parseXML metadataPath 
+        case (res :: Either String Metadata) of 
+          Left s -> U.assertFailure s
+          _ -> pure ()
