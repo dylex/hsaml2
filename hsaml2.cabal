@@ -133,7 +133,6 @@ test-suite tests
     bytestring,
     hsaml2,
     hxt,
-    hxt-http,
     http-types,
     network-uri,
     semigroups,
