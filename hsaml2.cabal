@@ -141,7 +141,6 @@ test-suite spec
     , http-types
     , hxt
     , hxt-charproperties
-    , hxt-http
     , hxt-unicode
     , invertible
     , invertible-hxt

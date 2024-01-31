@@ -72,4 +72,3 @@ tests:
     dependencies:
       - hsaml2
       - HUnit
-      - hxt-http
