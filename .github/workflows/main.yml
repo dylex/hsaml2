@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: haskell/actions/setup@v1
         with:
-          ghc-version: '8.10.7'
+          ghc-version: '9.2.8'
           enable-stack: true
       - uses: actions/cache@v1
         with:
@@ -20,7 +20,7 @@ jobs:
             ${{ runner.os }}-stack-
             ${{ runner.os }}-
       - name: build
-        run: stack build --system-ghc
+        run: stack build --system-ghc --flag hsaml2:crypton
       - name: test
-        run: stack test --system-ghc
+        run: stack test --system-ghc --flag hsaml2:crypton
  
