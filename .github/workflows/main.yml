@@ -20,7 +20,7 @@ jobs:
             ${{ runner.os }}-stack-
             ${{ runner.os }}-
       - name: build
-        run: stack build --system-ghc --flag hsaml2:crypton
+        run: stack build --system-ghc --flag hsaml2:-crypton
       - name: test
-        run: stack test --system-ghc --flag hsaml2:crypton
+        run: stack test --system-ghc --flag hsaml2:-crypton
  
