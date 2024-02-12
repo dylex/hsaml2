@@ -74,8 +74,8 @@ library
     build-depends:
       crypton,
       crypton-x509
-  else 
-    build-depends
+  else
+    build-depends:
       cryptonite,
       x509
   build-depends:
@@ -123,8 +123,8 @@ test-suite tests
     build-depends:
       crypton,
       crypton-x509
-  else 
-    build-depends
+  else
+    build-depends:
       cryptonite,
       x509
   build-depends:
