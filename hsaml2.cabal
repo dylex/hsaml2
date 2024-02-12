@@ -27,6 +27,10 @@ extra-source-files:
   test/XML/signature-example.xml
   test/XML/world.txt
 
+flag crypton
+  description: Use cryton instead of cryptonite
+  default: True
+
 source-repository head
   type: git
   location: https://github.com/dylex/hsaml2
@@ -66,13 +70,20 @@ library
     SAML2.Bindings.Internal
   c-sources:
     SAML2/XML/libxml2_stub.c
+  if flag(crypton)
+    build-depends:
+      crypton,
+      crypton-x509
+  else 
+    build-depends
+      cryptonite,
+      x509
   build-depends:
     asn1-encoding,
     asn1-types >= 0.2,
     base >=4.8 && <5,
     base64-bytestring,
     bytestring,
-    cryptonite,
     data-default,
     http-types,
     hxt,
@@ -89,7 +100,6 @@ library
     template-haskell,
     time,
     utf8-string,
-    x509,
     zlib
   pkgconfig-depends: libxml-2.0
   default-language:    Haskell2010
@@ -109,11 +119,18 @@ test-suite tests
     XML.Signature
   default-language: Haskell2010
   ghc-options: -Wall
+  if flag(crypton)
+    build-depends:
+      crypton,
+      crypton-x509
+  else 
+    build-depends
+      cryptonite,
+      x509
   build-depends:
     base,
     base64-bytestring,
     bytestring,
-    cryptonite,
     hsaml2,
     hxt,
     hxt-http,
@@ -122,5 +139,4 @@ test-suite tests
     semigroups,
     string-conversions,
     time,
-    x509,
     HUnit
