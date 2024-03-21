@@ -8,7 +8,6 @@ module SAML2.Core.Namespaces
   , samlURNIdentifier
   ) where
 
-import Data.Monoid ((<>))
 import Network.URI (URI(..))
 
 import SAML2.Core.Versioning
@@ -24,9 +23,3 @@ samlURN v l = URI
 
 samlURNIdentifier :: String -> (SAMLVersion, String) -> URI
 samlURNIdentifier t (v, n) = samlURN v [t, n]
-
--- samlURNIdentifier :: String -> (a -> (SAMLVersion, String)) -> (a -> samlURN)
--- samlURNIdentifier = (.) . uncurry . samlURNIdentifier
-
--- xpSAMLURNIdentifier :: Identifiable URI a => String -> XP.PU a
--- xpSAMLURNIdentifier = xpIdentifier XS.xpAnyURI

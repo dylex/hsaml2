@@ -58,9 +58,12 @@ instance XP.XmlPickler InclusiveNamespaces where
 
 -- |Canonicalize and serialize an XML document
 canonicalize :: CanonicalizationAlgorithm -> Maybe InclusiveNamespaces -> Maybe String -> HXT.XmlTree -> IO BS.ByteString
-canonicalize a i s =
+canonicalize a i s = canonicalizeWithRoot a i s . getChildren
+
+canonicalizeWithRoot :: CanonicalizationAlgorithm -> Maybe InclusiveNamespaces -> Maybe String -> HXT.XmlTrees -> IO BS.ByteString
+canonicalizeWithRoot a i s =
   LibXML2.c14n (cm a) (inclusiveNamespacesPrefixList <$> i) (canonicalWithComments a) s
-    <=< LibXML2.fromXmlTrees . getChildren where
+    <=< LibXML2.fromXmlTrees where
   cm CanonicalXML10{} = LibXML2.C14N_1_0
   cm CanonicalXML11{} = LibXML2.C14N_1_1
   cm CanonicalXMLExcl10{} = LibXML2.C14N_EXCLUSIVE_1_0

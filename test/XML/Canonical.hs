@@ -2,19 +2,33 @@
 module XML.Canonical (tests) where
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.UTF8 as BSU
+import qualified Data.ByteString.Lazy.UTF8 as BSLU
 import qualified Test.HUnit as U
 import qualified Text.XML.HXT.Core as HXT
+import System.IO.Unsafe (unsafePerformIO)
 
+import Control.Monad
+import Data.Either (isRight)
+import SAML2.XML
 import SAML2.XML.Canonical
 
 canonicalizeXML :: CanonicalizationAlgorithm -> String -> Bool -> IO [BS.ByteString]
-canonicalizeXML c f ent = HXT.runX $
+canonicalizeXML algo f ent = HXT.runX
   (HXT.readDocument [HXT.withCheckNamespaces HXT.yes, HXT.withValidate HXT.no, HXT.withCanonicalize HXT.no, HXT.withSubstDTDEntities ent] f
-  HXT.>>> HXT.arrIO (canonicalize c Nothing Nothing))
+  HXT.>>> HXT.arrIO (canonicalize algo Nothing Nothing))
 
 testC14N :: CanonicalizationAlgorithm -> String -> Bool -> BS.ByteString -> U.Test
-testC14N c f ent s = U.TestCase $
-  U.assertEqual (show c ++ ' ' : f) [s] =<< canonicalizeXML c f ent
+testC14N algo f ent s = U.TestCase $
+  U.assertEqual (show algo ++ ' ' : f) [s] =<< canonicalizeXML algo f ent
+
+testIdempotency :: CanonicalizationAlgorithm -> String -> U.Test
+testIdempotency algo input = U.TestCase $ do
+  U.assertBool (show algo ++ "[1] " ++ input) (isRight (go input))
+  U.assertBool (show algo ++ "[2] " ++ input) (go input == (go >=> go) input)
+ where
+  go :: String -> Either String String
+  go = fmap (BSU.toString . unsafePerformIO . canonicalizeWithRoot algo Nothing Nothing . (: [])) . xmlToDocE . BSLU.fromString
 
 tests :: U.Test
 tests = U.test
@@ -33,4 +47,5 @@ tests = U.test
   , testC14N (CanonicalXML10 False) "test/XML/noncanonical6.xml" False
     "<doc>\194\169</doc>"
   -- , testC14N (CanonicalXML10 False) "test/XML/noncanonical7.xml"
+  , testIdempotency (CanonicalXMLExcl10 False) "<a>\n  <b>\n\n\nwef  </b></a>"
   ]
