@@ -14,7 +14,6 @@ import Data.Char (isDigit)
 import Data.Char.Properties.XMLCharProps (isXmlSpaceChar, isXmlNameChar)
 import Data.Fixed (Pico, showFixed)
 import Data.List (elemIndex)
-import Data.Semigroup ((<>))
 import qualified Data.Time.Clock as Time
 import Data.Time.Format (formatTime, parseTimeM, defaultTimeLocale)
 import Data.Word (Word16)
