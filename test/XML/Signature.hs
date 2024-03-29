@@ -1,18 +1,26 @@
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
+
 module XML.Signature (tests) where
 
 import Control.Exception (SomeException, try)
+import Control.Monad
 import Data.ByteString.Base64
 import Data.Either (isLeft)
 import Data.List (isInfixOf)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.String.Conversions
+import Data.Maybe (fromMaybe)
 import Data.Time
 import qualified Data.X509 as X509
 import GHC.Stack
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base64.Lazy as EL
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy as LBS
 import qualified SAML2.XML as HS
 import qualified Test.HUnit as U
@@ -33,7 +41,7 @@ import XML
 import XML.Keys
 
 tests :: U.Test
-tests = U.test [serializationTests, signVerifyTests, counterExamples]
+tests = U.test [serializationTests, signVerifyTests, verifyTests, counterExamples]
 
 
 ----------------------------------------------------------------------
@@ -188,36 +196,39 @@ signVerifyTests = U.test
   [ U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkey1 req
-      let reqdoc = samlToDoc req'
-      req'' :: AuthnRequest <- verifySAMLProtocol' pubkey1 reqdoc
-      U.assertEqual "AuthnRequest with verifySAMLProtocol' (matching pubkeys)" req' req''
+      let reqdoc = samlToDocFirstChild req'
+      req'' :: AuthnRequest <- verifySAMLProtocolWithKeys pubkey1 reqdoc
+      U.assertEqual "AuthnRequest with verifySAMLProtocolWithKeys (matching pubkeys)" req' req''
 
   , U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkeyRsa req
       let reqdoc = samlToDoc req'
-      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' pubkey1 reqdoc
-      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): isLeft"
+      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocolWithKeys pubkey1 reqdoc
+      U.assertBool "AuthnRequest with verifySAMLProtocolWithKeys (bad pubkeys): isLeft"
         $ isLeft req''
-      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): error message matches"
-        $ "Left user error (signature verification failed: no matching key/alg pair.)" `isInfixOf` show req''
+      U.assertBool "AuthnRequest with verifySAMLProtocolWithKeys (bad pubkeys): error message matches"
+        $ "(SignatureVerificationLegacyFailure (Right Nothing))" `isInfixOf` show req''
 
   , U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkeyRsa req
       let reqdoc = samlToDoc req'
-      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' (pubkey1 <> dummyPubkeyRSA) reqdoc
-      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): isLeft"
+      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocolWithKeys (pubkey1 <> dummyPubkeyRSA) reqdoc
+      U.assertBool "AuthnRequest with verifySAMLProtocolWithKeys (bad pubkeys): isLeft"
         $ isLeft req''
-      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys): error message matches"
-        $ "Left user error (signature verification failed: verification failed.)" `isInfixOf` show req''
+      U.assertBool "AuthnRequest with verifySAMLProtocolWithKeys (bad pubkeys): error message matches"
+        $ "(SignatureVerificationLegacyFailure (Right (Just False)))" `isInfixOf` show req''
 
   , U.TestCase $ do
       let req = somereq
       req' <- signSAMLProtocol privkey1 req
-      let reqdoc = samlToDoc req'
-      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocol' pubkey2 reqdoc
-      U.assertBool "AuthnRequest with verifySAMLProtocol' (bad pubkeys)" $ isLeft req''
+      let reqdoc = samlToDocFirstChild req'
+      req'' :: Either SomeException AuthnRequest <- try $ verifySAMLProtocolWithKeys pubkey2 reqdoc
+      U.assertBool "AuthnRequest with verifySAMLProtocolWithKeys (bad pubkeys)"
+        $ isLeft req''
+      U.assertBool "AuthnRequest with verifySAMLProtocolWithKeys (bad pubkeys): error message matches"
+        $ "(SignatureVerificationLegacyFailure (Right (Just False)))" `isInfixOf` show req''
   ]
 
 somereq :: AuthnRequest
@@ -252,6 +263,55 @@ someTime :: UTCTime
 Just someTime = parseTimeM True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%QZ" "2013-03-18T03:28:54.1Z"
 
 ----------------------------------------------------------------------
+-- some real-world responses and signature verification runs
+
+data VerifyExample
+    = VerifyExample
+        BSL.ByteString -- keyinfo from metadata of idp
+        BSL.ByteString -- signed response (in the base64 encoded form from the multipart body)
+        String -- identifier of the sub-tree of which the signature is to be verified
+        (Either SignatureError ()) -- expected result
+        Int -- serial number
+    deriving (Eq, Show)
+
+verifyTests :: U.Test
+verifyTests = U.test $ runVerifyExample <$> examples
+
+runVerifyExample :: VerifyExample -> U.Test
+runVerifyExample (VerifyExample keys xmltree refid want examplenumber) = U.TestCase $ do
+    let keys' = either (error . show) id $ parseKeyInfo keys
+    let xmltree' = either (error . show) id $ (EL.decode >=> xmlToDocE) xmltree
+    have <- verifySignatureUnenvelopedSigs keys' refid xmltree'
+    U.assertEqual ("verify example #" ++ show examplenumber) want have
+
+parseKeyInfo :: BSL.ByteString -> Either String PublicKeys
+parseKeyInfo = getCert >=> getKeys
+  where
+    getCert :: BSL.ByteString -> Either String X509.SignedCertificate
+    getCert raw = case xmlToSAML @KeyInfo raw of
+        (Right (keyInfoElements -> X509Data (X509Certificate cert :| []) :| [])) -> Right cert
+        bad -> Left $ "unsupported: " ++ show bad
+
+    getKeys :: X509.SignedCertificate -> Either String PublicKeys
+    getKeys cert = do
+        case X509.certPubKey . X509.signedObject $ X509.getSigned cert of
+            X509.PubKeyDSA pk -> Right $ PublicKeys (Just pk) Nothing
+            X509.PubKeyRSA pk -> Right $ PublicKeys Nothing (Just pk)
+            bad -> Left $ "unsupported: " ++ show bad
+
+examples :: [VerifyExample]
+examples = zipWith ($) xs [1 ..]
+  where
+    xs :: [Int -> VerifyExample]
+    xs =
+        [ VerifyExample
+            "<KeyInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><X509Data><X509Certificate>MIIDBTCCAe2gAwIBAgIQev76BWqjWZxChmKkGqoAfDANBgkqhkiG9w0BAQsFADAtMSswKQYDVQQDEyJhY2NvdW50cy5hY2Nlc3Njb250cm9sLndpbmRvd3MubmV0MB4XDTE4MDIxODAwMDAwMFoXDTIwMDIxOTAwMDAwMFowLTErMCkGA1UEAxMiYWNjb3VudHMuYWNjZXNzY29udHJvbC53aW5kb3dzLm5ldDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMgmGiRfLh6Fdi99XI2VA3XKHStWNRLEy5Aw/gxFxchnh2kPdk/bejFOs2swcx7yUWqxujjCNRsLBcWfaKUlTnrkY7i9x9noZlMrijgJy/Lk+HH5HX24PQCDf+twjnHHxZ9G6/8VLM2e5ZBeZm+t7M3vhuumEHG3UwloLF6cUeuPdW+exnOB1U1fHBIFOG8ns4SSIoq6zw5rdt0CSI6+l7b1DEjVvPLtJF+zyjlJ1Qp7NgBvAwdiPiRMU4l8IRVbuSVKoKYJoyJ4L3eXsjczoBSTJ6VjV2mygz96DC70MY3avccFrk7tCEC6ZlMRBfY1XPLyldT7tsR3EuzjecSa1M8CAwEAAaMhMB8wHQYDVR0OBBYEFIks1srixjpSLXeiR8zES5cTY6fBMA0GCSqGSIb3DQEBCwUAA4IBAQCKthfK4C31DMuDyQZVS3F7+4Evld3hjiwqu2uGDK+qFZas/D/eDunxsFpiwqC01RIMFFN8yvmMjHphLHiBHWxcBTS+tm7AhmAvWMdxO5lzJLS+UWAyPF5ICROe8Mu9iNJiO5JlCo0Wpui9RbB1C81Xhax1gWHK245ESL6k7YWvyMYWrGqr1NuQcNS0B/AIT1Nsj1WY7efMJQOmnMHkPUTWryVZlthijYyd7P2Gz6rY5a81DAFqhDNJl2pGIAE6HWtSzeUEh3jCsHEkoglKfm4VrGJEuXcALmfCMbdfTvtu4rlsaP2hQad+MG/KJFlenoTK34EMHeBPDCpqNDz8UVNk</X509Certificate></X509Data></KeyInfo>"
+            "PHNhbWxwOlJlc3BvbnNlIElEPSJfM2FlYjMwNTQtZTg1Zi00MWZhLWEyMGYtMGYyNzhiMzI3ZjRlIiBWZXJzaW9uPSIyLjAiIElzc3VlSW5zdGFudD0iMjAxOC0wNC0xNFQwOTo1ODo1OC40NTdaIiBEZXN0aW5hdGlvbj0iaHR0cHM6Ly96YjIuemVyb2J1enoubmV0OjYwNDQzL2F1dGhyZXNwIiBJblJlc3BvbnNlVG89ImlkY2YyMjk5YWM1NTFiNDJmMWFhOWI4ODgwNGVkMzA4YzIiIHhtbG5zOnNhbWxwPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6cHJvdG9jb2wiPjxJc3N1ZXIgeG1sbnM9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDphc3NlcnRpb24iPmh0dHBzOi8vc3RzLndpbmRvd3MubmV0LzY4MmZlYmU4LTAyMWItNGZkZS1hYzA5LWU2MDA4NWYwNTE4MS88L0lzc3Vlcj48c2FtbHA6U3RhdHVzPjxzYW1scDpTdGF0dXNDb2RlIFZhbHVlPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6c3RhdHVzOlN1Y2Nlc3MiLz48L3NhbWxwOlN0YXR1cz48QXNzZXJ0aW9uIElEPSJfYzc5YzNlYzgtMWMyNi00NzUyLTk0NDMtMWY3NmViN2Q1ZGQ2IiBJc3N1ZUluc3RhbnQ9IjIwMTgtMDQtMTRUMDk6NTg6NTguNDQyWiIgVmVyc2lvbj0iMi4wIiB4bWxucz0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmFzc2VydGlvbiI+PElzc3Vlcj5odHRwczovL3N0cy53aW5kb3dzLm5ldC82ODJmZWJlOC0wMjFiLTRmZGUtYWMwOS1lNjAwODVmMDUxODEvPC9Jc3N1ZXI+PFNpZ25hdHVyZSB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC8wOS94bWxkc2lnIyI+PFNpZ25lZEluZm8+PENhbm9uaWNhbGl6YXRpb25NZXRob2QgQWxnb3JpdGhtPSJodHRwOi8vd3d3LnczLm9yZy8yMDAxLzEwL3htbC1leGMtYzE0biMiLz48U2lnbmF0dXJlTWV0aG9kIEFsZ29yaXRobT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS8wNC94bWxkc2lnLW1vcmUjcnNhLXNoYTI1NiIvPjxSZWZlcmVuY2UgVVJJPSIjX2M3OWMzZWM4LTFjMjYtNDc1Mi05NDQzLTFmNzZlYjdkNWRkNiI+PFRyYW5zZm9ybXM+PFRyYW5zZm9ybSBBbGdvcml0aG09Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvMDkveG1sZHNpZyNlbnZlbG9wZWQtc2lnbmF0dXJlIi8+PFRyYW5zZm9ybSBBbGdvcml0aG09Imh0dHA6Ly93d3cudzMub3JnLzIwMDEvMTAveG1sLWV4Yy1jMTRuIyIvPjwvVHJhbnNmb3Jtcz48RGlnZXN0TWV0aG9kIEFsZ29yaXRobT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS8wNC94bWxlbmMjc2hhMjU2Ii8+PERpZ2VzdFZhbHVlPmxrV25SSUlBRm1IVmVXSVpWWGJhZGoxTzRhN05nNDRwL2NIQkZNOHFhYk09PC9EaWdlc3RWYWx1ZT48L1JlZmVyZW5jZT48L1NpZ25lZEluZm8+PFNpZ25hdHVyZVZhbHVlPmRhZ2VaWTV3aWdWVUpSeVg0bUZDZ0dMOVBhajRuVXpsTmFoQ2d4SkcybVU2M0RhTHpldm1qeWRITHVMWnhGR3MrNmxDRDhpb0xjNUpMckp3OFBlKzB3d1hZV0huTFAvWU53eVFSNWI2bVpUZWpOOUQvcFpORGNSdVRiQmZNeEdsTjhWVU5oaWg3OHRVL24xQmxiZE5oSGpBTmVTbGdPVUNlWWlIZWVzekRHaERYMi9RZ1p6OEJDL3FHa2ZBNUlIbHlSVHJBZkRoTmhGNFRpQ1F5N1haaVRqMXZ4WlE2ZDBBcTVGaWhFc0JtVW9qYnI1WW5KSjA2WjZ2KzRCS1lVWXNkUkY5RklWdlVtRCszckZORlJBQjdBMnp6c0RxYk82UUdham5YNURKaWtaNmtvTmFreFBsM3Jqd29lRWxwTzBDSG5oWXcyMEN1U09kMnVhK2ppeHRvdz09PC9TaWduYXR1cmVWYWx1ZT48S2V5SW5mbz48WDUwOURhdGE+PFg1MDlDZXJ0aWZpY2F0ZT5NSUlEQlRDQ0FlMmdBd0lCQWdJUWV2NzZCV3FqV1p4Q2htS2tHcW9BZkRBTkJna3Foa2lHOXcwQkFRc0ZBREF0TVNzd0tRWURWUVFERXlKaFkyTnZkVzUwY3k1aFkyTmxjM05qYjI1MGNtOXNMbmRwYm1SdmQzTXVibVYwTUI0WERURTRNREl4T0RBd01EQXdNRm9YRFRJd01ESXhPVEF3TURBd01Gb3dMVEVyTUNrR0ExVUVBeE1pWVdOamIzVnVkSE11WVdOalpYTnpZMjl1ZEhKdmJDNTNhVzVrYjNkekxtNWxkRENDQVNJd0RRWUpLb1pJaHZjTkFRRUJCUUFEZ2dFUEFEQ0NBUW9DZ2dFQkFNZ21HaVJmTGg2RmRpOTlYSTJWQTNYS0hTdFdOUkxFeTVBdy9neEZ4Y2huaDJrUGRrL2JlakZPczJzd2N4N3lVV3F4dWpqQ05Sc0xCY1dmYUtVbFRucmtZN2k5eDlub1psTXJpamdKeS9MaytISDVIWDI0UFFDRGYrdHdqbkhIeFo5RzYvOFZMTTJlNVpCZVptK3Q3TTN2aHV1bUVIRzNVd2xvTEY2Y1VldVBkVytleG5PQjFVMWZIQklGT0c4bnM0U1NJb3E2enc1cmR0MENTSTYrbDdiMURFalZ2UEx0SkYrenlqbEoxUXA3TmdCdkF3ZGlQaVJNVTRsOElSVmJ1U1ZLb0tZSm95SjRMM2VYc2pjem9CU1RKNlZqVjJteWd6OTZEQzcwTVkzYXZjY0Zyazd0Q0VDNlpsTVJCZlkxWFBMeWxkVDd0c1IzRXV6amVjU2ExTThDQXdFQUFhTWhNQjh3SFFZRFZSME9CQllFRklrczFzcml4anBTTFhlaVI4ekVTNWNUWTZmQk1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQ0t0aGZLNEMzMURNdUR5UVpWUzNGNys0RXZsZDNoaml3cXUydUdESytxRlphcy9EL2VEdW54c0ZwaXdxQzAxUklNRkZOOHl2bU1qSHBoTEhpQkhXeGNCVFMrdG03QWhtQXZXTWR4TzVsekpMUytVV0F5UEY1SUNST2U4TXU5aU5KaU81SmxDbzBXcHVpOVJiQjFDODFYaGF4MWdXSEsyNDVFU0w2azdZV3Z5TVlXckdxcjFOdVFjTlMwQi9BSVQxTnNqMVdZN2VmTUpRT21uTUhrUFVUV3J5VlpsdGhpall5ZDdQMkd6NnJZNWE4MURBRnFoRE5KbDJwR0lBRTZIV3RTemVVRWgzakNzSEVrb2dsS2ZtNFZyR0pFdVhjQUxtZkNNYmRmVHZ0dTRybHNhUDJoUWFkK01HL0tKRmxlbm9USzM0RU1IZUJQRENwcU5EejhVVk5rPC9YNTA5Q2VydGlmaWNhdGU+PC9YNTA5RGF0YT48L0tleUluZm8+PC9TaWduYXR1cmU+PFN1YmplY3Q+PE5hbWVJRCBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OnBlcnNpc3RlbnQiPnhKeGRxUzhXMlVYYXdiWlpxcEdGWEtHNHVFbU81R2ppaktEMlJrTWlwQm88L05hbWVJRD48U3ViamVjdENvbmZpcm1hdGlvbiBNZXRob2Q9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpjbTpiZWFyZXIiPjxTdWJqZWN0Q29uZmlybWF0aW9uRGF0YSBJblJlc3BvbnNlVG89ImlkY2YyMjk5YWM1NTFiNDJmMWFhOWI4ODgwNGVkMzA4YzIiIE5vdE9uT3JBZnRlcj0iMjAxOC0wNC0xNFQxMDowMzo1OC40NDJaIiBSZWNpcGllbnQ9Imh0dHBzOi8vemIyLnplcm9idXp6Lm5ldDo2MDQ0My9hdXRocmVzcCIvPjwvU3ViamVjdENvbmZpcm1hdGlvbj48L1N1YmplY3Q+PENvbmRpdGlvbnMgTm90QmVmb3JlPSIyMDE4LTA0LTE0VDA5OjUzOjU4LjQ0MloiIE5vdE9uT3JBZnRlcj0iMjAxOC0wNC0xNFQxMDo1Mzo1OC40NDJaIj48QXVkaWVuY2VSZXN0cmljdGlvbj48QXVkaWVuY2U+aHR0cHM6Ly96YjIuemVyb2J1enoubmV0OjYwNDQzL2F1dGhyZXNwPC9BdWRpZW5jZT48L0F1ZGllbmNlUmVzdHJpY3Rpb24+PC9Db25kaXRpb25zPjxBdHRyaWJ1dGVTdGF0ZW1lbnQ+PEF0dHJpYnV0ZSBOYW1lPSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL2lkZW50aXR5L2NsYWltcy90ZW5hbnRpZCI+PEF0dHJpYnV0ZVZhbHVlPjY4MmZlYmU4LTAyMWItNGZkZS1hYzA5LWU2MDA4NWYwNTE4MTwvQXR0cmlidXRlVmFsdWU+PC9BdHRyaWJ1dGU+PEF0dHJpYnV0ZSBOYW1lPSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL2lkZW50aXR5L2NsYWltcy9vYmplY3RpZGVudGlmaWVyIj48QXR0cmlidXRlVmFsdWU+Y2NmYjM3ODgtODI0MS00YWZlLTg4OTctZjMxM2YzNWY5ZTM3PC9BdHRyaWJ1dGVWYWx1ZT48L0F0dHJpYnV0ZT48QXR0cmlidXRlIE5hbWU9Imh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiPjxBdHRyaWJ1dGVWYWx1ZT5maXN4dDFAYXp1cmV3aXJlLm9ubWljcm9zb2Z0LmNvbTwvQXR0cmlidXRlVmFsdWU+PC9BdHRyaWJ1dGU+PEF0dHJpYnV0ZSBOYW1lPSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL2lkZW50aXR5L2NsYWltcy9kaXNwbGF5bmFtZSI+PEF0dHJpYnV0ZVZhbHVlPmZpc3h0MTwvQXR0cmlidXRlVmFsdWU+PC9BdHRyaWJ1dGU+PEF0dHJpYnV0ZSBOYW1lPSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL2lkZW50aXR5L2NsYWltcy9pZGVudGl0eXByb3ZpZGVyIj48QXR0cmlidXRlVmFsdWU+aHR0cHM6Ly9zdHMud2luZG93cy5uZXQvNjgyZmViZTgtMDIxYi00ZmRlLWFjMDktZTYwMDg1ZjA1MTgxLzwvQXR0cmlidXRlVmFsdWU+PC9BdHRyaWJ1dGU+PEF0dHJpYnV0ZSBOYW1lPSJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL2NsYWltcy9hdXRobm1ldGhvZHNyZWZlcmVuY2VzIj48QXR0cmlidXRlVmFsdWU+aHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2F1dGhlbnRpY2F0aW9ubWV0aG9kL3Bhc3N3b3JkPC9BdHRyaWJ1dGVWYWx1ZT48L0F0dHJpYnV0ZT48L0F0dHJpYnV0ZVN0YXRlbWVudD48QXV0aG5TdGF0ZW1lbnQgQXV0aG5JbnN0YW50PSIyMDE4LTA0LTE0VDA5OjU4OjU1LjYxM1oiIFNlc3Npb25JbmRleD0iX2M3OWMzZWM4LTFjMjYtNDc1Mi05NDQzLTFmNzZlYjdkNWRkNiI+PEF1dGhuQ29udGV4dD48QXV0aG5Db250ZXh0Q2xhc3NSZWY+dXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmFjOmNsYXNzZXM6UGFzc3dvcmQ8L0F1dGhuQ29udGV4dENsYXNzUmVmPjwvQXV0aG5Db250ZXh0PjwvQXV0aG5TdGF0ZW1lbnQ+PC9Bc3NlcnRpb24+PC9zYW1scDpSZXNwb25zZT4K"
+            "_c79c3ec8-1c26-4752-9443-1f76eb7d5dd6"
+            (Right ())
+        ]
+
+----------------------------------------------------------------------
 -- more counter-examples
 
 counterExamples :: U.Test
@@ -261,21 +321,17 @@ counterExamples = U.test
       U.assertEqual "canoncalization broke the input" i o
   ]
 
-canonicalizeCounterExample :: HasCallStack => BS.ByteString -> IO (LBS, LBS)
+canonicalizeCounterExample :: HasCallStack => BS.ByteString -> IO (LBS.ByteString, LBS.ByteString)
 canonicalizeCounterExample base64input = do
   let inbs :: LBS.ByteString
-      inbs = either (error "badcase") cs $ Data.ByteString.Base64.decode base64input
+      inbs = either (error "badcase") BS.fromStrict $ Data.ByteString.Base64.decode base64input
 
       tree :: XmlTree
-      tree = maybe (error "badcase") id $ HS.xmlToDoc inbs
+      tree = fromMaybe (error "badcase") $ HS.xmlToDoc inbs
 
       algo :: CanonicalizationAlgorithm
       algo = CanonicalXMLExcl10 {canonicalWithComments = True}
 
-  outbs :: LBS.ByteString <- cs <$> canonicalize algo Nothing Nothing (NTree (XTag (mkQName "" "" "root") []) [tree])
-
-  -- LBS.putStr ("[" <> inbs <> "]\n")
-  -- LBS.putStr ("[" <> outbs <> "]\n")
-  -- print $ inbs == outbs
+  outbs :: LBS.ByteString <- BS.fromStrict <$> canonicalize algo Nothing Nothing (NTree (XTag (mkQName "" "" "root") []) [tree])
 
   pure (inbs, outbs)

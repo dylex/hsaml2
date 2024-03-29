@@ -18,11 +18,14 @@ module SAML2.XML
   , xpIdentifier
   , IdentifiedURI
   , samlToDoc
+  , samlToDocFirstChild
   , samlToXML
   , docToSAML
-  , docToXML
+  , docToXMLWithoutRoot
+  , docToXMLWithRoot
   , xmlToSAML
   , xmlToDoc
+  , xmlToDocE
   ) where
 
 import qualified Data.ByteString.Lazy as BSL
@@ -32,9 +35,9 @@ import qualified Data.Invertible as Inv
 import Data.Maybe (listToMaybe)
 import Network.URI (URI)
 import qualified Text.XML.HXT.Core as HXT
-import Text.XML.HXT.Arrow.Edit (escapeXmlRefs)
-import Text.XML.HXT.DOM.ShowXml (xshow')
+import qualified Text.XML.HXT.DOM.ShowXml
 import Text.XML.HXT.DOM.XmlNode (getChildren)
+import qualified Data.Tree.NTree.TypeDefs as HXT
 
 import SAML2.XML.Types
 import SAML2.Core.Datatypes
@@ -48,7 +51,7 @@ xpTrimElemNS :: Namespace -> String -> XP.PU a -> XP.PU a
 xpTrimElemNS ns n c = XP.xpTrim $ XP.xpElemQN (mkNName ns n) (c XP.>* XP.xpWhitespace)
 
 xpXmlLang :: XP.PU XS.Language
-xpXmlLang = XP.xpAttrQN (mkNName xmlNS "lang") $ XS.xpLanguage
+xpXmlLang = XP.xpAttrQN (mkNName xmlNS "lang") XS.xpLanguage
 
 type IP = XS.String
 
@@ -100,14 +103,43 @@ samlToDoc = head
   . HXT.runLA (HXT.processChildren $ HXT.cleanupNamespaces HXT.collectPrefixUriPairs)
   . XP.pickleDoc XP.xpickle
 
-docToXML :: HXT.XmlTree -> BSL.ByteString
-docToXML = xshow' cquot aquot (:) . getChildren where (cquot, aquot) = escapeXmlRefs
+-- | From the input xml forest, take the first child of the first tree.
+samlToDocFirstChild :: XP.XmlPickler a => a -> HXT.XmlTree
+samlToDocFirstChild = head . getChildren . head
+  . HXT.runLA (HXT.processChildren $ HXT.cleanupNamespaces HXT.collectPrefixUriPairs)
+  . XP.pickleDoc XP.xpickle
+
+-- | see also 'docToXMLWithRoot'
+docToXMLWithoutRoot :: HXT.XmlTree -> BSL.ByteString
+docToXMLWithoutRoot =  BSL.concat . HXT.runLA (HXT.xshowBlob HXT.getChildren)
+
+-- | 'docToXML' chops off the root element from the tree.  'docToXMLWithRoot' does not do
+-- this.  it may make sense to remove 'docToXMLWithoutRoot', but since i don't understand this
+-- code enough to be confident not to break anything, i'll just leave this extra function for
+-- reference.
+docToXMLWithRoot :: HXT.XmlTree -> BSL.ByteString
+docToXMLWithRoot = Text.XML.HXT.DOM.ShowXml.xshowBlob . (:[])
 
 samlToXML :: XP.XmlPickler a => a -> BSL.ByteString
-samlToXML = docToXML . samlToDoc
+samlToXML = docToXMLWithoutRoot . samlToDoc
 
 xmlToDoc :: BSL.ByteString -> Maybe HXT.XmlTree
-xmlToDoc = listToMaybe . HXT.runLA
+xmlToDoc = either (const Nothing) Just . xmlToDocE
+
+xmlToDocE :: BSL.ByteString -> Either String HXT.XmlTree
+xmlToDocE = fix . xmlToDocUnsafe
+  where
+    fix Nothing =
+      Left "Nothing"
+    fix (Just (HXT.NTree (HXT.XError num msg) shouldBeEmpty)) =
+      Left $ show num ++ ": " ++ msg ++ (if null shouldBeEmpty then "" else show shouldBeEmpty)
+    fix (Just good) =
+      Right good
+
+-- | Take a UTF-8 encoded bytestring and return an xml tree.  This is unsafe and returns xml
+-- trees containing parse errors on occasion; call 'xmlToDocE' instead.
+xmlToDocUnsafe :: BSL.ByteString -> Maybe HXT.XmlTree
+xmlToDocUnsafe = listToMaybe . HXT.runLA
   (HXT.xreadDoc
   HXT.>>> HXT.removeWhiteSpace
   HXT.>>> HXT.neg HXT.isXmlPi

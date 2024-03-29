@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+
 module SAML2.XML.Types where
 
 import Data.List.NonEmpty (NonEmpty(..))
@@ -8,8 +9,10 @@ import qualified Text.XML.HXT.DOM.TypeDefs as HXT
 import qualified Text.XML.HXT.Arrow.Pickle.Xml.Invertible as XP
 
 type Node = HXT.XmlTree
+
 -- instance XP.XmlPickler XML.Node where xpickle = XP.xpTree
 type Nodes = HXT.XmlTrees
+
 -- instance XP.XmlPickler XML.Nodes where xpickle = XP.xpTrees
 type List1 a = NonEmpty a
 
