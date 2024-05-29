@@ -27,6 +27,7 @@ module SAML2.XML.Signature
 import GHC.Stack
 import Control.Applicative ((<|>))
 import Control.Exception (SomeException, handle)
+import Control.Monad ((<=<))
 import Control.Monad.Except
 import Crypto.Number.Serialize (i2ospOf_, os2ip)
 import Crypto.Hash (hashlazy, SHA1(..), SHA256(..), SHA512(..), RIPEMD160(..))
