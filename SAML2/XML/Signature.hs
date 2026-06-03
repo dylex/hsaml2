@@ -28,7 +28,6 @@ import GHC.Stack
 import Control.Applicative ((<|>))
 import Control.Exception (SomeException, handle)
 import Control.Monad ((<=<))
-import Control.Monad.Except
 import Crypto.Number.Serialize (i2ospOf_, os2ip)
 import Crypto.Hash (hashlazy, SHA1(..), SHA256(..), SHA512(..), RIPEMD160(..))
 import qualified Crypto.PubKey.DSA as DSA
@@ -40,6 +39,7 @@ import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Either (isRight)
+import Data.Maybe (listToMaybe)
 import Network.URI (URI(..))
 import qualified Text.XML.HXT.Core as HXT
 import qualified Text.XML.HXT.DOM.ShowXml as DOM
@@ -72,7 +72,9 @@ applyTransformsXML (Transform (Identified (TransformCanonicalization a)) ins x :
 applyTransformsXML (Transform (Identified TransformEnvelopedSignature) Nothing [] : tl) =
   -- XXX assumes "this" signature in top-level
   applyTransformsXML tl
-  . head . HXT.runLA (HXT.processChildren $ HXT.processChildren
+  . maybe (error "applyTransformsXML: EnvelopedSignature transform produced no result") id
+  . listToMaybe
+  . HXT.runLA (HXT.processChildren $ HXT.processChildren
     $ HXT.neg (isDSElem "Signature"))
 applyTransformsXML tl = applyTransformsBytes tl . DOM.xshowBlob . return
 

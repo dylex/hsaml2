@@ -400,7 +400,7 @@ instance XP.XmlPickler RoleDescriptor where
     where
     xpAnyURIList = XP.xpWrapEither
       ( mapM (maybe (Left "invalid anyURI") Right . URI.parseURIReference) . words
-      , tail . foldr ((.) (' ':) . URI.uriToString id) ""
+      , drop 1 . foldr ((.) (' ':) . URI.uriToString id) ""
       ) $ XP.xpTextDT $ XPS.scDT (namespaceURIString ns) "anyURIListType" []
 
 instance DS.Signable RoleDescriptor where
