@@ -70,11 +70,11 @@ library
   c-sources:
     SAML2/XML/libxml2_stub.c
   build-depends:
-    crypton >=1.0.6 && <1.1,
+    crypton >=1.1 && <1.2,
     crypton-x509,
     crypton-asn1-types,
     crypton-asn1-encoding,
-    memory
+    ram
   build-depends:
     base >=4.8 && <5,
     base64-bytestring,
