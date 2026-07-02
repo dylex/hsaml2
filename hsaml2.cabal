@@ -72,14 +72,18 @@ library
   if flag(crypton)
     build-depends:
       crypton,
-      crypton-x509
+      crypton-x509,
+      crypton-asn1-types,
+      crypton-asn1-encoding,
+      ram
   else
     build-depends:
       cryptonite,
-      x509
+      x509,
+      asn1-types >= 0.2,
+      asn1-encoding,
+      memory
   build-depends:
-    asn1-encoding,
-    asn1-types >= 0.2,
     base >=4.8 && <5,
     base64-bytestring,
     bytestring,
@@ -91,7 +95,6 @@ library
     invertible,
     invertible-hxt,
     lens,
-    memory,
     mtl,
     network-uri,
     process,
