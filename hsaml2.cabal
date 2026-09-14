@@ -116,6 +116,7 @@ test-suite tests
     XML.Canonical
     XML.Keys
     XML.Encryption
+    XML.Serialization
     XML.Signature
   default-language: Haskell2010
   ghc-options: -Wall

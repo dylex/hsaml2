@@ -22,6 +22,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64.Lazy as EL
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Lazy as LBS
+import qualified SAML2.Core.Assertions as A
 import qualified SAML2.XML as HS
 import qualified Test.HUnit as U
 import qualified Text.XML.HXT.DOM.QualifiedName as HXT
@@ -41,7 +42,8 @@ import XML
 import XML.Keys
 
 tests :: U.Test
-tests = U.test [serializationTests, signVerifyTests, verifyTests, counterExamples]
+tests = U.test
+  [serializationTests, signVerifyTests, verifyTests, counterExamples, transformFallbackTests]
 
 
 ----------------------------------------------------------------------
@@ -335,3 +337,27 @@ canonicalizeCounterExample base64input = do
   outbs :: LBS.ByteString <- BS.fromStrict <$> canonicalize algo Nothing Nothing (NTree (XTag (mkQName "" "" "root") []) [tree])
 
   pure (inbs, outbs)
+
+
+----------------------------------------------------------------------
+-- regression: applyTransforms's fallback case used to serialize via `HXT.xshowBlob`, which
+-- neither XML-escapes '<'/'&' nor supports anything beyond Latin-1.
+
+transformFallbackTests :: U.Test
+transformFallbackTests = U.test
+  [ U.TestCase $ do
+      let riskyString = "><& проверка テスト 🪲"
+          attr = A.Attribute
+            { A.attributeName = "x"
+            , A.attributeNameFormat = Identified AttributeNameFormatUnspecified
+            , A.attributeFriendlyName = Nothing
+            , A.attributeAttrs = []
+            , A.attributeValues = [[HXT.mkText riskyString]]
+            }
+      out <- applyTransforms Nothing (samlToDocFirstChild attr)
+      case xmlToSAML out :: Either String A.Attribute of
+        Left err -> U.assertFailure $ "xmlToSAML: " ++ err
+        Right attr' -> U.assertEqual
+          "applyTransforms with no canonicalization transform preserves escapable/non-Latin-1 text"
+          attr attr'
+  ]

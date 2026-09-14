@@ -20,6 +20,7 @@ module SAML2.XML
   , samlToDoc
   , samlToDocFirstChild
   , samlToXML
+  , xshowEscapeXMLByteString
   , docToSAML
   , docToXMLWithoutRoot
   , docToXMLWithRoot
@@ -35,7 +36,6 @@ import qualified Data.Invertible as Inv
 import Data.Maybe (listToMaybe)
 import Network.URI (URI)
 import qualified Text.XML.HXT.Core as HXT
-import qualified Text.XML.HXT.DOM.ShowXml
 import Text.XML.HXT.DOM.XmlNode (getChildren)
 import qualified Data.Tree.NTree.TypeDefs as HXT
 
@@ -109,16 +109,24 @@ samlToDocFirstChild = head . getChildren . head
   . HXT.runLA (HXT.processChildren $ HXT.cleanupNamespaces HXT.collectPrefixUriPairs)
   . XP.pickleDoc XP.xpickle
 
--- | see also 'docToXMLWithRoot'
-docToXMLWithoutRoot :: HXT.XmlTree -> BSL.ByteString
-docToXMLWithoutRoot =  BSL.concat . HXT.runLA (HXT.xshowBlob HXT.getChildren)
+-- | Serialize the trees selected by the given arrow to an escaped-XML, UTF-8 encoded `ByteString`.
+xshowEscapeXMLByteString :: HXT.LA HXT.XmlTree HXT.XmlTree -> HXT.XmlTree -> BSL.ByteString
+xshowEscapeXMLByteString sel = BSLU.fromString . concat . HXT.runLA (HXT.xshowEscapeXml sel)
 
--- | 'docToXML' chops off the root element from the tree.  'docToXMLWithRoot' does not do
--- this.  it may make sense to remove 'docToXMLWithoutRoot', but since i don't understand this
+-- | see also 'docToXMLWithRoot'
+--
+-- Produces UTF-8 encoded `ByteString`.
+docToXMLWithoutRoot :: HXT.XmlTree -> BSL.ByteString
+docToXMLWithoutRoot = xshowEscapeXMLByteString HXT.getChildren
+
+-- | 'docToXMLWithoutRoot' chops off the root element from the tree.  'docToXMLWithRoot' does not do
+-- this. It may make sense to remove 'docToXMLWithoutRoot', but since i don't understand this
 -- code enough to be confident not to break anything, i'll just leave this extra function for
 -- reference.
+--
+-- Produces UTF-8 encoded `ByteString`.
 docToXMLWithRoot :: HXT.XmlTree -> BSL.ByteString
-docToXMLWithRoot = Text.XML.HXT.DOM.ShowXml.xshowBlob . (:[])
+docToXMLWithRoot = xshowEscapeXMLByteString HXT.this
 
 samlToXML :: XP.XmlPickler a => a -> BSL.ByteString
 samlToXML = docToXMLWithoutRoot . samlToDoc
